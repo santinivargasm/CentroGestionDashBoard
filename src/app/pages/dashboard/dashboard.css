@@ -1,0 +1,11 @@
+/* Altura útil para los charts */
+.chart-container,
+.circle-container {
+  height: 260px; /* ajusta a tu gusto */
+}
+
+/* Animación de aparición del modal */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

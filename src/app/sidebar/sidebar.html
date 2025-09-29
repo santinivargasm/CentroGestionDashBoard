@@ -1,0 +1,35 @@
+<nav class="bg-[#F5F5F5] text-black p-4 min-h-screen flex flex-col sm:flex-row transition-all duration-500 ease-in-out">
+    <button (click)="collapsed.set(!collapsed())"
+        class="bg-[#00a1a1] text-white md-text-sm ml-2 md:text-white hover:bg-[#7abece] rounded-md p-2">
+        <i class="fa fa-bars"></i>
+    </button>
+
+    @if (!collapsed()) {
+    <nav class="sm:w-1/6 sm:border-r sm:border-gray-700 transition-all duration-300 ease-in-out">
+        <div class="bg-[#F5F5F5] p-4 rounded px-5">
+            <a class="flex items-center py-2 px-4 rounded-md hover:bg-[#7abece] hover:text-white transition-all duration-200 ease-in-out text-black"
+                routerLink="/dashboard" [ngClass]="{'bg-[#00a1a1] text-white': isActive('/dashboard')}">
+                <i class="fa fa-home fa-fw mr-2"></i>
+                Dashboard
+            </a>
+
+            <a class="flex items-center py-2 px-4 rounded-md hover:bg-[#7abece] hover:text-white transition-all duration-200 ease-in-out text-black"
+                routerLink="/formularios" [ngClass]="{'bg-[#00a1a1] text-white': isActive('/formularios')}">
+                <i class="fa fa-users fa-fw mr-2"></i>
+                Formularios
+            </a>
+
+            <a class="flex items-center py-2 px-4 rounded-md hover:bg-[#7abece] hover:text-white transition-all duration-200 ease-in-out text-black"
+                routerLink="/login" [ngClass]="{'bg-[#00a1a1] text-white': isActive('/login')}">
+                <i class="fa fa-sign-in fa-fw mr-2"></i>
+                Login
+            </a>
+
+        </div>
+    </nav>
+    }
+    <div class="sm:w-full p-4">
+        <router-outlet />
+    </div>
+
+</nav>

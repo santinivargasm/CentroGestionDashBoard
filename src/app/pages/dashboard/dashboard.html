@@ -1,0 +1,440 @@
+<!-- dashboard.html -->
+
+<div class="rounded-md shadow-md p-10 mb-4 bg-gradient-to-br from-[#ffffff] to-[#008f8f]">
+  <h2 class="text-xl font-bold text-black">Proyectos usuarios</h2>
+  <div class="flex justify-center p-4">
+    <div class="w-full">
+      <div class="overflow-x-auto -mx-4 md:mx-0">
+        <table
+          class="min-w-[1200px] md:min-w-full w-full table-auto border border-gray-300 rounded-lg shadow-md overflow-hidden">
+          <thead>
+            <tr class="bg-[#00a1a1] text-white text-center">
+              <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm lg:text-base font-medium whitespace-nowrap">ID</th>
+              <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm lg:text-base font-medium whitespace-nowrap">Nombre</th>
+              <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm lg:text-base font-medium whitespace-nowrap">Apellido</th>
+              <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm lg:text-base font-medium whitespace-nowrap">Email</th>
+              <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm lg:text-base font-medium whitespace-nowrap">Área</th>
+              <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm lg:text-base font-medium whitespace-nowrap">Detalles</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of userList; track $index) {
+              <tr class="text-center">
+                <td
+                  class="border-b border-l border-gray-300 bg-[#F3F6FF] px-2 py-2 text-xs md:px-4 md:py-3 md:text-base font-medium text-gray-700 whitespace-nowrap">
+                  {{ item.id_empleado }}
+                </td>
+                <td
+                  class="border-b border-l border-gray-300 bg-[#F3F6FF] px-2 py-2 text-xs md:px-4 md:py-3 md:text-base font-medium text-gray-700">
+                  {{ item.nombre }}
+                </td>
+                <td
+                  class="border-b border-gray-300 bg-white px-2 py-2 text-xs md:px-4 md:py-3 md:text-base font-medium text-gray-700">
+                  {{ item.apellido }}
+                </td>
+                <td
+                  class="border-b border-gray-300 bg-white px-2 py-2 text-xs md:px-4 md:py-3 md:text-base font-medium text-gray-700 whitespace-nowrap">
+                  {{ item.correo_electronico }}
+                </td>
+                <td
+                  class="border-b border-l border-gray-300 bg-[#F3F6FF] px-2 py-2 text-xs md:px-4 md:py-3 md:text-base font-medium text-gray-700">
+                  {{ item.departamento }}
+                </td>
+                <td class="border-b border-r border-gray-300 bg-[#F3F6FF] px-2 py-2 md:px-4 md:py-3">
+                  <button
+                    class="inline-block rounded-md border border-[#00a1a1] px-4 py-2 text-xs md:text-sm font-medium text-[#00a1a1] hover:bg-[#00a1a1] hover:text-white transition-all duration-300 ease-in-out"
+                    (click)="verDetalle(item)">
+                    Ver
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid lg:grid-cols-3 gap-4 mt-5">
+  <div class="rounded-md shadow-md p-10 mb-4 bg-gradient-to-br from-[#1d2530] to-[#008f8f]">
+    <h2 class="text-xl font-bold text-white">Análisis</h2>
+    <div class="chart-container">
+      <canvas #chart></canvas>
+    </div>
+    <button type="button"
+      class="bg bg-purple-700 transition delay-150 duration-300 ease-in-out hover:translate-y-1 hover:scale-110 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded focus:outline-none">
+      Ver análisis
+    </button>
+  </div>
+
+  <div class="rounded-md shadow-md p-10 mb-4 bg-gradient-to-br from-[#1d2530] to-[#008f8f]">
+    <h2 class="text-xl font-bold text-white">Análisis</h2>
+    <div class="circle-container">
+      <canvas #circle></canvas>
+    </div>
+    <button type="button"
+      class="bg bg-[#00a1a1] transition delay-150 duration-300 ease-in-out hover:translate-y-1 hover:scale-110 hover:bg-[#FFB600] text-white font-bold py-2 px-4 rounded focus:outline-none">
+      Ver análisis
+    </button>
+  </div>
+
+  <div class="rounded-md shadow-md p-10 mb-4 bg-gradient-to-br from-[#1d2530] to-[#008f8f]">
+    <h2 class="text-xl font-bold text-white">Lámpara</h2>
+    <div class="mt-4 overflow-y-auto max-h-48">
+      @for (comment of comments; track $index) {
+        <div class="flex items-center py-2 border-b border-gray-700">
+          <img src="../../../assets/fotoPerfil.png" alt="Foto de perfil" class="w-24 h-20 rounded-full mr-4" />
+          <div>
+            <p class="font-medium text-white">{{ comment.user }}</p>
+            <p class="text-gray-400 text-sm">{{ comment.text }}</p>
+            <p class="text-gray-500 text-xs">{{ comment.date | date: 'short' }}</p>
+          </div>
+        </div>
+      }
+      @if (comments.length === 0) {
+        <div class="text-center text-gray-400 text-sm mt-4">No hay comentarios</div>
+      }
+    </div>
+  </div>
+
+  <div class="rounded-md shadow-md p-10 mb-4 bg-gradient-to-br from-[#1d2530] to-[#008f8f]">
+    <h2 class="text-xl font-bold text-white">Pendientes</h2>
+    <p class="text-white">Este es el contenido del card 7</p>
+  </div>
+
+  <div class="rounded-md shadow-md p-10 mb-4 bg-gradient-to-br from-[#1d2530] to-[#008f8f]">
+    <h2 class="text-xl font-bold text-white">Tareas</h2>
+    <p class="text-white">Este es el contenido del card 8</p>
+  </div>
+
+  <!-- ============ MODAL (XXXL) ============ -->
+  <div *ngIf="isModalOpen" class="fixed inset-0 z-[9999] animate-[fadeIn_.2s_ease-out]">
+    <!-- Fondo -->
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-[1px]" (click)="onBackdropClick($event)"></div>
+
+    <!-- Contenido -->
+    <div
+      class="relative mx-auto w-[99vw] max-w-[2200px] max-h-[98vh] top-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 border border-gray-200 overflow-hidden"
+      role="dialog" aria-modal="true" aria-labelledby="userDetailTitle">
+      <!-- Cerrar -->
+      <button (click)="closeModal()"
+        class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl leading-none"
+        aria-label="Cerrar modal">
+        &times;
+      </button>
+
+      <h3 id="userDetailTitle" class="text-2xl font-bold text-gray-900 mb-4">Detalle del Usuario</h3>
+
+      <!-- Loader -->
+      <div *ngIf="isLoadingDetail" class="flex items-center gap-3 text-gray-700">
+        <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+        </svg>
+        Cargando...
+      </div>
+
+      <!-- Contenido scrolleable -->
+      <ng-container *ngIf="!isLoadingDetail">
+        <ng-container *ngIf="detailVm as vm">
+          <div class="h-[calc(98vh-100px)] overflow-auto pr-2">
+            <!-- ===== Datos del colaborador ===== -->
+            <div class="mb-6 max-h-[38vh] overflow-auto">
+              <table class="min-w-full border border-gray-300 rounded-md overflow-hidden">
+                <thead class="bg-gray-100">
+                  <tr>
+                    <th class="px-4 py-2 text-left text-gray-800 font-semibold border-b border-gray-300">Campo</th>
+                    <th class="px-4 py-2 text-left text-gray-800 font-semibold border-b border-gray-300">Valor</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-600">ID Empleado</td>
+                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.id_empleado }}</td>
+                  </tr>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-600">Nombre</td>
+                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.nombre }}</td>
+                  </tr>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-600">Apellido</td>
+                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.apellido }}</td>
+                  </tr>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-600">Fecha de Nacimiento</td>
+                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.fecha_nacimiento | date: 'dd/MM/yyyy' }}</td>
+                  </tr>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-600">Correo Electrónico</td>
+                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.correo_electronico }}</td>
+                  </tr>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-600">Puesto</td>
+                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.puesto }}</td>
+                  </tr>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-600">Area</td>
+                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.departamento }}</td>
+                  </tr>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-600">Estado Chapter</td>
+                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.estado_chapter }}</td>
+                  </tr>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-600">Automatización</td>
+                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.automatizacion }}</td>
+                  </tr>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-600">Analítica Avanzada</td>
+                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.analitica_avanzada }}</td>
+                  </tr>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-600">Gerencia</td>
+                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.gerencia }}</td>
+                  </tr>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-600">Vicepresidencia</td>
+                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.vicepresidencia }}</td>
+                  </tr>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-600">Jefe Directo</td>
+                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.jefe_directo }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- ===== Iniciativas ===== -->
+            <div class="max-h-[38vh] overflow-auto">
+              <div class="flex items-center justify-between mb-3">
+                <h4 class="text-xl font-semibold text-gray-800">Iniciativas del colaborador</h4>
+
+                <!-- Botón insertar nueva iniciativa -> abre modal secundario -->
+                <button type="button" (click)="openNewIniModal(vm.colaborador)"
+                  class="inline-block rounded-md border border-[#00a1a1] bg-[#00a1a1] px-4 py-2 text-sm font-medium text-white hover:bg-white hover:text-[#00a1a1] transition-all duration-300 ease-in-out">
+                  + Insertar nueva iniciativa
+                </button>
+              </div>
+
+              <ng-container *ngIf="vm.iniciativas?.length; else noIni">
+                <table class="min-w-full border border-gray-300 rounded-md overflow-hidden mt-4">
+                  <thead class="bg-teal-500 text-white font-bold">
+                    <tr>
+                      <th class="px-3 py-2 text-left border-b border-gray-300">ID</th>
+                      <th class="px-3 py-2 text-left border-b border-gray-300">Nombre iniciativa</th>
+                      <th class="px-3 py-2 text-left border-b border-gray-300">Descripción</th>
+                      <th class="px-3 py-2 text-left border-b border-gray-300">Avance</th>
+                      <th class="px-3 py-2 text-left border-b border-gray-300">Estado</th>
+                      <th class="px-3 py-2 text-left border-b border-gray-300">Prioridad</th>
+                      <th class="px-3 py-2 text-left border-b border-gray-300">Inicio</th>
+                      <th class="px-3 py-2 text-left border-b border-gray-300">Fin Est.</th>
+                      <th class="px-3 py-2 text-left border-b border-gray-300">Fin Real</th>
+                      <th class="px-3 py-2 text-center border-b border-gray-300">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    @for (ini of vm.iniciativas; track ini.id_iniciativa) {
+                      <tr class="hover:bg-teal-100 align-top">
+                        <td class="px-3 py-2 text-gray-800">{{ ini.id_iniciativa }}</td>
+                        <td class="px-3 py-2 text-gray-800">{{ ini.nombre_iniciativa }}</td>
+                        <td class="px-3 py-2 text-gray-600">{{ ini.descripcion }}</td>
+                        <td class="px-3 py-2 text-gray-800">{{ ini.avance }}%</td>
+                        <td class="px-3 py-2 text-gray-700">{{ ini.estado_id }}</td>
+                        <td class="px-3 py-2 text-gray-700">{{ ini.prioridad_id }}</td>
+                        <td class="px-3 py-2 text-gray-700">{{ ini.fecha_inicio | date: 'dd/MM/yyyy' }}</td>
+                        <td class="px-3 py-2 text-gray-700">{{ ini.fecha_fin_estimada | date: 'dd/MM/yyyy' }}</td>
+                        <td class="px-3 py-2 text-gray-700">{{ ini.fecha_fin_real | date: 'dd/MM/yyyy' }}</td>
+                        
+                        <td class="px-3 py-2 text-center">
+                      <button
+  type="button"
+  class="inline-block rounded-md border border-[#00a1a1] px-3 py-1 text-xs md:text-sm font-medium text-[#006d6d] hover:bg-[#00a1a1] hover:text-white transition-all"
+  (click)="goToHistoryUser(ini)"
+>
+  Abrir
+</button>
+
+                    </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </ng-container>
+
+              <ng-template #noIni>
+                <div class="text-gray-600 text-sm mt-2">No hay iniciativas registradas para este colaborador.</div>
+              </ng-template>
+            </div>
+          </div>
+        </ng-container>
+
+        <div *ngIf="modalError" class="mt-4 text-red-600 text-sm">
+          {{ modalError }}
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL NUEVA INICIATIVA (secundario) ============ -->
+<div *ngIf="isNewIniModalOpen" class="fixed inset-0 z-[10050] animate-[fadeIn_.2s_ease-out]">
+  <!-- Fondo -->
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-[2px]" (click)="onNewIniBackdropClick($event)"></div>
+
+  <!-- Contenido -->
+  <div
+    class="relative mx-auto w-[96vw] max-w-[1500px] max-h-[94vh] top-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 border border-gray-200 overflow-hidden"
+    role="dialog" aria-modal="true" aria-labelledby="newIniTitle">
+
+    <!-- Cerrar -->
+    <button (click)="closeNewIniModal()"
+      class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl leading-none"
+      aria-label="Cerrar modal">
+      &times;
+    </button>
+
+    <h3 id="newIniTitle" class="text-2xl font-bold text-gray-900 mb-2">Nueva iniciativa</h3>
+    <p class="text-gray-500 mb-4">
+      Colaborador:
+      <span class="font-medium">{{ selectedUser?.nombre }} {{ selectedUser?.apellido }}</span>
+    </p>
+
+    <!-- Contenido scrolleable -->
+    <div class="h-[calc(94vh-130px)] overflow-auto pr-1">
+      <!-- AHORA con (ngSubmit) y botón type=submit -->
+      <form #f="ngForm" (ngSubmit)="submitNewIni()" novalidate autocomplete="off">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <!-- id_iniciativa (opcional) -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700">ID iniciativa</label>
+            <input type="number" name="id_iniciativa" [(ngModel)]="newIni!.id_iniciativa"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700">Nombre *</label>
+            <input type="text" name="nombre" [(ngModel)]="newIni!.nombre" required
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+
+          <div class="md:col-span-3">
+            <label class="block text-sm font-medium text-gray-700">Descripción *</label>
+            <textarea name="descripcion" [(ngModel)]="newIni!.descripcion" rows="3" required
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Fecha inicio</label>
+            <input type="date" name="fecha_inicio" [(ngModel)]="newIni!.fecha_inicio"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Fecha fin estimada</label>
+            <input type="date" name="fecha_fin_estimada" [(ngModel)]="newIni!.fecha_fin_estimada"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Fecha fin real</label>
+            <input type="date" name="fecha_fin_real" [(ngModel)]="newIni!.fecha_fin_real"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+
+          <!-- IDs numéricos -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Estado ID</label>
+            <input type="number" name="estado_id" [(ngModel)]="newIni!.estado_id"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Prioridad ID</label>
+            <input type="number" name="prioridad_id" [(ngModel)]="newIni!.prioridad_id"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Tipo iniciativa ID</label>
+            <input type="number" name="tipo_iniciativa_id" [(ngModel)]="newIni!.tipo_iniciativa_id"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Bucket ID</label>
+            <input type="number" name="bucket_id" [(ngModel)]="newIni!.bucket_id"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Sprint ID</label>
+            <input type="number" name="sprint_id" [(ngModel)]="newIni!.sprint_id"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Talla ID</label>
+            <input type="number" name="talla_id" [(ngModel)]="newIni!.talla_id"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Tipo elemento ID</label>
+            <input type="number" name="tipo_elemento_id" [(ngModel)]="newIni!.tipo_elemento_id"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Avance (%)</label>
+            <input type="number" name="avance" [(ngModel)]="newIni!.avance" min="0" max="100"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700">Comentario</label>
+            <input type="text" name="comentario" [(ngModel)]="newIni!.comentario"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+
+          <div class="md:col-span-3">
+            <label class="block text-sm font-medium text-gray-700">Ruta de acceso</label>
+            <input type="text" name="ruta_acceso" [(ngModel)]="newIni!.ruta_acceso"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Proyecto ID</label>
+            <input type="number" name="id_proyecto" [(ngModel)]="newIni!.id_proyecto"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+
+          <!-- Datos colaborador -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700">ID empleado *</label>
+            <input type="text" name="id_empleado" [(ngModel)]="newIni!.id_empleado" required
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Correo electrónico *</label>
+            <input type="email" name="correo_electronico" [(ngModel)]="newIni!.correo_electronico" required
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">ID modificador</label>
+            <input type="text" name="id_modificador" [(ngModel)]="newIni!.id_modificador"
+              class="mt-1 w-full rounded-md border bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+        </div>
+
+        <div class="mt-5 flex gap-2">
+          <button type="submit"
+            [disabled]="isSaving || !f.form.valid"
+            class="inline-flex items-center rounded-md bg-teal-600 px-4 py-2 text-white hover:bg-teal-700 disabled:opacity-50">
+            {{ isSaving ? 'Guardando...' : 'Guardar' }}
+          </button>
+          <button type="button" (click)="closeNewIniModal()" [disabled]="isSaving"
+            class="inline-flex items-center rounded-md border px-4 py-2 text-teal-700 border-teal-600 hover:bg-teal-50">
+            Cancelar
+          </button>
+        </div>
+      </form>
+
+      <div *ngIf="modalError" class="mt-4 text-red-600 text-sm">
+        {{ modalError }}
+      </div>
+    </div>
+  </div>
+</div>

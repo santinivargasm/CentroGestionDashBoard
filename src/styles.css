@@ -1,1 +1,17 @@
-/* You can add global styles to this file, and also import other style files */
+@import "tailwindcss";
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+/* Forzar títulos dentro de headers teal a blanco */
+.bg-teal-600 h1,
+.bg-teal-600 h2,
+.bg-teal-600 h3 {
+  color: #ffffff !important;
+}
+
+/* Encabezados de la tabla Angular Material */
+.mat-header-cell {
+  color: #ffffff !important;
+  font-weight: 600;
+  background-color: #009688 !important; /* opcional: tono teal */
+}
