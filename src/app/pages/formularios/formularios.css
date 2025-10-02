@@ -1,0 +1,60 @@
+/* ===== Labels ===== */
+.lbl {
+  display:block;
+  margin-bottom:.25rem;
+  font-weight:600;
+  color:#374151; /* gray-700 */
+  font-size:.9rem;
+}
+.req { color:#ef4444; } /* rojo para requerido */
+
+/* ===== Inputs ===== */
+.inp {
+  width:100%;
+  background:#f9fafb;             /* gris clarito */
+  color:#111827;
+  border:1px solid #d1d5db;
+  border-radius:.375rem;          /* esquinas redondeadas suaves */
+  padding:.55rem .75rem;
+  outline:none;
+  font-size:.9rem;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.inp::placeholder { color:#9ca3af; }
+.inp:focus {
+  border-color:#00a1a1;
+  box-shadow:0 0 0 3px rgba(0,161,161,.2);
+  background:#fff;
+}
+
+/* ===== Botón principal ===== */
+.btn-primary {
+  background:#00a1a1;
+  color:#fff;
+  font-weight:600;
+  font-size:.9rem;
+  padding:.55rem 1rem;
+  border-radius:.375rem;
+  border:1px solid #009191;
+  transition: transform .15s ease, background-color .15s ease;
+}
+.btn-primary:hover {
+  background:#008f8f;
+  transform: translateY(-1px);
+}
+
+/* ===== Botón secundario ===== */
+.btn-outline {
+  background:#ffffff;
+  color:#00a1a1;
+  font-weight:600;
+  font-size:.9rem;
+  padding:.55rem 1rem;
+  border-radius:.375rem;
+  border:1px solid #00a1a1;
+  transition: transform .15s ease, background-color .15s ease, color .15s ease;
+}
+.btn-outline:hover {
+  background:rgba(0,161,161,.08);
+  transform:translateY(-1px);
+}

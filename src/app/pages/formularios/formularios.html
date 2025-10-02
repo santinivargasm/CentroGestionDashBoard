@@ -1,56 +1,153 @@
-<div class="bg-[#1d2530] rounded-md shadow-md p-4 mb-4 text-white">
-    <h2 class="text-xl font-bold bg-[#1d2530]">Formularios</h2>
-</div>
+<div class="rounded-md shadow-md p-10 mb-4 bg-gradient-to-br from-[#ffffff] to-[#008f8f]">
+    <h2 class="text-xl font-bold text-black">Crear un colaborador</h2>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-md">
+  <!-- Header igual al dashboard -->
+  <div class="rounded-t-xl bg-gradient-to-br bg-[#00a1a1] px-5 py-3">
+    <h2 class="text-lg font-semibold text-white">Nuevo colaborador</h2>
+    <p class="mt-0.5 text-xs text-white/80">Crea un colaborador</p>
+  </div>
 
-<form class="space-y-4 md-4">
+  <form class="p-6 space-y-6" (ngSubmit)="submit()" #f="ngForm" novalidate autocomplete="off">
+    <!-- Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-            <label for="nombre" class="block text-[var(--text-color-blue-blanco)] text-lg font-bold mb-2 text-white">Nombre</label>
-            <input type="text" id="nombre" placeholder="ingrese nombre" class=" text-white shadow appearance-none border-gray-600 appearance-none border rounded w-full py-2 px-3 text-[var(--text-color-blue-blanco)] leading-tight focus:outline-none 
-            focus:border-indigo-500 focus:shadow-outline">
-        </div>
+      <!-- Nombre -->
+      <div>
+        <label class="lbl">Nombre <span class="req">*</span></label>
+        <input
+          type="text" [(ngModel)]="model.nombre" name="nombre" required
+          placeholder="Ingresa nombre"
+          class="inp" />
+      </div>
 
+      <!-- Apellido -->
+      <div>
+        <label class="lbl">Apellido <span class="req">*</span></label>
+        <input
+          type="text" [(ngModel)]="model.apellido" name="apellido" required
+          placeholder="Ingresa apellido"
+          class="inp" />
+      </div>
 
-        <div>
-            <label for="nombre"
-                class="block text-[var(--text-color-blue-blanco)] text-lg font-bold mb-2 text-white">Apellido</label>
-            <input type="text" id="Apellido" placeholder="ingrese nombre text-white" class=" text-white shadow appearance-none border-gray-600 appearance-none border rounded w-full py-2 px-3 text-[var(--text-color-blue-blanco)] leading-tight focus:outline-none 
-            focus:border-indigo-500 focus:shadow-outline">
-        </div>
+      <!-- Departamento -->
+      <div>
+        <label class="lbl">Proyecto / Departamento</label>
+        <input
+          type="text" [(ngModel)]="model.departamento" name="departamento"
+          placeholder="Ingresa nombre"
+          class="inp" />
+      </div>
 
-        <div>
-            <label for="nombre"
-                class="block text-[var(--text-color-blue-blanco)] text-lg font-bold mb-2 text-white">Proyecto</label>
-            <input type="text" id="Proyecto" placeholder="ingrese nombre" class=" text-white shadow appearance-none border-gray-600 appearance-none border rounded w-full py-2 px-3 text-[var(--text-color-blue-blanco)] leading-tight focus:outline-none 
-            focus:border-indigo-500 focus:shadow-outline">
-        </div>
-        <div>
-            <label for="nombre"
-                class="block text-[var(--text-color-blue-blanco)] text-lg font-bold mb-2 text-white">Chapter</label>
-            <input type="text" id="Chapter" placeholder="ingrese nombre" class=" text-white shadow appearance-none border-gray-600 appearance-none border rounded w-full py-2 px-3 text-[var(--text-color-blue-blanco)] leading-tight focus:outline-none 
-            focus:border-indigo-500 focus:shadow-outline">
-        </div>
+      <!-- Chapter -->
+      <div>
+        <label class="lbl">Chapter / Estado</label>
+        <input
+          type="text" [(ngModel)]="model.estado_chapter" name="estado_chapter"
+          placeholder="Activo"
+          class="inp" />
+      </div>
 
-        <div>
-            <label for="nombre"
-                class="block text-[var(--text-color-blue-blanco)] text-lg font-bold mb-2 text-white">Gerencia</label>
-            <input type="text" id="Gerencia" placeholder="ingrese nombre" class=" text-white shadow appearance-none border-gray-600 appearance-none border rounded w-full py-2 px-3 text-[var(--text-color-blue-blanco)] leading-tight focus:outline-none 
-            focus:border-indigo-500 focus:shadow-outline">
-        </div>
+      <!-- Gerencia -->
+      <div>
+        <label class="lbl">Gerencia</label>
+        <input
+          type="text" [(ngModel)]="model.gerencia" name="gerencia"
+          placeholder="Ingresa gerencia"
+          class="inp" />
+      </div>
 
-        <div>
-            <label for="nombre"
-                class="block text-[var(--text-color-blue-blanco)] text-lg font-bold mb-2 text-white">ID</label>
-            <input type="number" id="ID" placeholder="ingrese nombre" class=" text-white shadow appearance-none border-gray-600 appearance-none border rounded w-full py-2 px-3 leading-tight focus:outline-none 
-            focus:border-indigo-500 focus:shadow-outline ">
-        </div>
+      <!-- ID -->
+      <div>
+        <label class="lbl">ID Empleado</label>
+        <input
+          type="number" [(ngModel)]="model.id_empleado" name="id_empleado"
+          placeholder="Ingresa ID"
+          class="inp" />
+      </div>
+
+      <!-- Fecha -->
+      <div>
+        <label class="lbl">Fecha de nacimiento</label>
+        <input
+          type="date" [(ngModel)]="model.fecha_nacimiento" name="fecha_nacimiento"
+          class="inp" />
+      </div>
+
+      <!-- Correo -->
+      <div>
+        <label class="lbl">Correo electrónico <span class="req">*</span></label>
+        <input
+          type="email" [(ngModel)]="model.correo_electronico" name="correo_electronico" required
+          placeholder="nombre.apellido@empresa.com"
+          class="inp" />
+      </div>
+
+      <!-- Puesto -->
+      <div>
+        <label class="lbl">Puesto</label>
+        <input
+          type="text" [(ngModel)]="model.puesto" name="puesto"
+          placeholder="Ej. Analista Senior"
+          class="inp" />
+      </div>
+
+      <!-- Vicepresidencia -->
+      <div>
+        <label class="lbl">Vicepresidencia</label>
+        <input
+          type="text" [(ngModel)]="model.vicepresidencia" name="vicepresidencia"
+          placeholder="VP Tecnología"
+          class="inp" />
+      </div>
+
+      <!-- Automatización -->
+      <div>
+        <label class="lbl">Automatización</label>
+        <input
+          type="text" [(ngModel)]="model.automatizacion" name="automatizacion"
+          placeholder="Power Apps, etc."
+          class="inp" />
+      </div>
+
+      <!-- Analítica -->
+      <div>
+        <label class="lbl">Analítica avanzada</label>
+        <input
+          type="text" [(ngModel)]="model.analitica_avanzada" name="analitica_avanzada"
+          placeholder="Dashboard Control, etc."
+          class="inp" />
+      </div>
+
+      <!-- Jefe (full) -->
+      <div class="md:col-span-2">
+        <label class="lbl">Jefe directo</label>
+        <input
+          type="text" [(ngModel)]="model.jefe_directo" name="jefe_directo"
+          placeholder="Nombre jefe"
+          class="inp" />
+      </div>
     </div>
 
+    <!-- Mensaje -->
+    <div *ngIf="message" class="text-sm"
+         [class.text-green-600]="message.type==='ok'"
+         [class.text-red-600]="message.type==='error'">
+      {{ message.text }}
+    </div>
 
-</form>
+    <!-- Acciones -->
+    <div class="flex items-center gap-2">
+      <button type="submit"
+              [disabled]="isSaving || !model.nombre || !model.apellido || !model.correo_electronico"
+              class="btn-primary disabled:opacity-50">
+        {{ isSaving ? 'Guardando...' : 'Guardar' }}
+      </button>
+      <button type="button" (click)="resetForm()" [disabled]="isSaving" class="btn-outline">
+        Limpiar
+      </button>
+    </div>
+  </form>
+</div>
+</div><!-- Card contenedor -->
 
-
-
-<hr class="border-gray-600 m-10">
 

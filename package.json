@@ -1,12 +1,14 @@
 {
   "name": "centro-gestion-dashoard",
   "version": "0.0.0",
+  "private": true,
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "build:azure": "ng build --configuration production && copy web.config dist\\centroGestionDashboard\\browser\\"
   },
   "prettier": {
     "printWidth": 100,
@@ -20,7 +22,6 @@
       }
     ]
   },
-  "private": true,
   "dependencies": {
     "@angular/animations": "^20.3.0",
     "@angular/cdk": "^20.2.3",

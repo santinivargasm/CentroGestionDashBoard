@@ -26,7 +26,6 @@
               }
             ],
             "styles": [
-              
               "src/styles.css"
             ]
           },
@@ -44,7 +43,12 @@
                   "maximumError": "8kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "fonts": {
+                  "inline": false
+                }
+              }
             },
             "development": {
               "optimization": false,
@@ -84,7 +88,6 @@
               }
             ],
             "styles": [
-              
               "src/styles.css"
             ]
           }

@@ -1,192 +1,256 @@
-<!-- CONTENEDOR PRINCIPAL -->
-<div class="w-full px-4 md:px-6 lg:px-8">
+<!-- Contenedor principal -->
+<div class="rounded-2xl shadow-md p-6 md:p-8 mb-8 bg-gradient-to-br from-[#f3fbfb] to-[#cfe8e6] border border-[#cfe7e4]">
 
-    <!-- CARD: Crear Historia de Usuario -->
-    <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
-        <!-- Header -->
-
-        <div class="bg-teal-600 px-5 py-3 flex items-center justify-between">
-            <h2 class="text-lg md:text-xl font-semibold text-white">Crear Historia de Usuario</h2>
-        </div>
-
-
-        <!-- Body -->
-        <div class="p-4 md:p-6">
-            <form class="space-y-4" [formGroup]="historiaForm" (ngSubmit)="crearHistoria()">
-
-                <!-- GRID RESPONSIVO -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    <!-- Columna izquierda -->
-                    <div class="space-y-4">
-                        <mat-form-field appearance="fill" class="w-full">
-                            <mat-label>Nombre de la Historia</mat-label>
-                            <input matInput type="text" formControlName="nombre_historia" />
-                        </mat-form-field>
-
-                        <mat-form-field appearance="fill" class="w-full">
-                            <mat-label>Estado</mat-label>
-                            <input matInput type="text" formControlName="estado" />
-                        </mat-form-field>
-
-                        <mat-form-field appearance="fill" class="w-full">
-                            <mat-label>Responsable (Correo)</mat-label>
-                            <input matInput type="text" formControlName="responsable" />
-                        </mat-form-field>
-
-                        <mat-form-field appearance="fill" class="w-full">
-                            <mat-label>ID Iniciativa</mat-label>
-                            <input matInput type="number" formControlName="id_iniciativa" />
-                        </mat-form-field>
-                    </div>
-
-                    <!-- Columna derecha -->
-                    <div class="space-y-4">
-                        <mat-form-field appearance="fill" class="w-full">
-                            <mat-label>Descripción</mat-label>
-                            <textarea matInput formControlName="descripcion" rows="4"></textarea>
-                        </mat-form-field>
-
-                        <mat-form-field appearance="fill" class="w-full">
-                            <mat-label>Fase</mat-label>
-                            <input matInput type="text" formControlName="fase" />
-                        </mat-form-field>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <mat-form-field appearance="fill" class="w-full">
-                                <mat-label>Fecha de Inicio</mat-label>
-                                <input matInput [matDatepicker]="pickerInicio" formControlName="fecha_inicio" />
-                                <mat-datepicker-toggle matSuffix [for]="pickerInicio"></mat-datepicker-toggle>
-                                <mat-datepicker #pickerInicio></mat-datepicker>
-                            </mat-form-field>
-
-                            <mat-form-field appearance="fill" class="w-full">
-                                <mat-label>Fecha de Fin</mat-label>
-                                <input matInput [matDatepicker]="pickerFin" formControlName="fecha_fin" />
-                                <mat-datepicker-toggle matSuffix [for]="pickerFin"></mat-datepicker-toggle>
-                                <mat-datepicker #pickerFin></mat-datepicker>
-                            </mat-form-field>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Checkboxes -->
-                <div class="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2">
-                    <mat-checkbox formControlName="validacion_fase_1">Validación Fase 1</mat-checkbox>
-                    <mat-checkbox formControlName="validacion_fase_2">Validación Fase 2</mat-checkbox>
-                    <mat-checkbox formControlName="validacion_fase_n">Validación Fase N</mat-checkbox>
-                </div>
-
-                <!-- Botón -->
-                <div class="pt-2">
-                    <button mat-flat-button color="primary" type="submit" [disabled]="historiaForm.invalid"
-                        class="!bg-teal-600 hover:!bg-teal-700 !text-white rounded-xl px-5 py-2 shadow-sm">
-                        {{ historiaForm.invalid ? 'Completa los campos' : 'Crear Historia de Usuario' }}
-                    </button>
-                </div>
-            </form>
-        </div>
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-3">
+      <button type="button"
+              (click)="volver()"
+              class="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[#006d6d] border-[#00a1a1] hover:bg-[#e8f5f4]">
+        ← Atrás
+      </button>
+      <h2 class="text-xl md:text-2xl font-bold text-[#0f766e] tracking-wide">
+        Historias de Usuario
+      </h2>
     </div>
 
-    <!-- SEPARADOR -->
-    <div class="h-6"></div>
+    <div class="flex items-center gap-3">
+      <span class="text-sm text-gray-700">Iniciativa: <b>{{ idIniciativa || '—' }}</b></span>
+      <button
+        type="button"
+        (click)="openDialog(crearTpl)"
+        class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-white bg-[#00a1a1] hover:bg-[#008f8f] transition">
+        <span class="text-lg leading-none">＋</span>
+        Nueva historia
+      </button>
+    </div>
+  </div>
 
-    <!-- CARD: Historias de Usuario Creadas -->
-    <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
-        <!-- Header -->
-        <div class="bg-teal-600 px-5 py-3">
-            <h2 class="text-lg md:text-xl font-semibold text-white">Historias de Usuario Creadas</h2>
-        </div>
+  <!-- ==================== POPUP (Angular Material Dialog) ==================== -->
+  <ng-template #crearTpl>
+    <div class="w-[96vw] max-w-[1100px]">
+      <div class="bg-[#00a1a1] text-white px-5 py-3 flex items-center justify-between rounded-t-xl">
+        <h3 class="text-lg font-semibold">Crear Historia de Usuario</h3>
+        <button type="button" (click)="closeDialog()" class="text-white/90 hover:text-white text-2xl leading-none">&times;</button>
+      </div>
 
+      <div class="bg-white p-4 md:p-6 rounded-b-xl">
+        <form class="space-y-4" [formGroup]="historiaForm" (ngSubmit)="crearHistoria()">
 
-        <!-- Body -->
-        <div class="p-4 md:p-6">
-            <!-- Tabla responsiva con scroll horizontal en móviles -->
-            <div class="w-full overflow-x-auto">
-                <table mat-table [dataSource]="historias" class="min-w-[800px] w-full text-sm">
-                    <!-- Columnas -->
-                    <ng-container matColumnDef="id_historia">
-                        <th mat-header-cell *matHeaderCellDef class="whitespace-nowrap">ID</th>
-                        <td mat-cell *matCellDef="let historia" class="whitespace-nowrap">{{ historia.id_historia }}
-                        </td>
-                    </ng-container>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-4">
+              <mat-form-field appearance="fill" class="w-full">
+                <mat-label>Nombre de la Historia</mat-label>
+                <input matInput type="text" formControlName="nombre_historia" />
+              </mat-form-field>
 
-                    <ng-container matColumnDef="nombre_historia">
-                        <th mat-header-cell *matHeaderCellDef class="whitespace-nowrap">Nombre</th>
-                        <td mat-cell *matCellDef="let historia">{{ historia.nombre_historia }}</td>
-                    </ng-container>
+              <mat-form-field appearance="fill" class="w-full">
+                <mat-label>Estado</mat-label>
+                <input matInput type="text" formControlName="estado" />
+              </mat-form-field>
 
-                    <ng-container matColumnDef="descripcion">
-                        <th mat-header-cell *matHeaderCellDef>Descripción</th>
-                        <td mat-cell *matCellDef="let historia" class="max-w-[360px] truncate">
-                            {{ historia.descripcion }}
-                        </td>
-                    </ng-container>
+              <mat-form-field appearance="fill" class="w-full">
+                <mat-label>Responsable (Correo)</mat-label>
+                <input matInput type="email" formControlName="responsable" />
+              </mat-form-field>
 
-                    <ng-container matColumnDef="estado">
-                        <th mat-header-cell *matHeaderCellDef class="whitespace-nowrap">Estado</th>
-                        <td mat-cell *matCellDef="let historia">{{ historia.estado }}</td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="fase">
-                        <th mat-header-cell *matHeaderCellDef class="whitespace-nowrap">Fase</th>
-                        <td mat-cell *matCellDef="let historia">{{ historia.fase }}</td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="responsable">
-                        <th mat-header-cell *matHeaderCellDef class="whitespace-nowrap">Responsable</th>
-                        <td mat-cell *matCellDef="let historia" class="truncate max-w-[220px]">
-                            {{ historia.responsable }}
-                        </td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="fecha_inicio">
-                        <th mat-header-cell *matHeaderCellDef class="whitespace-nowrap">Fecha de Inicio</th>
-                        <td mat-cell *matCellDef="let historia" class="whitespace-nowrap">
-                            {{ historia.fecha_inicio | date: 'dd/MM/yyyy' }}
-                        </td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="fecha_fin">
-                        <th mat-header-cell *matHeaderCellDef class="whitespace-nowrap">Fecha de Fin</th>
-                        <td mat-cell *matCellDef="let historia" class="whitespace-nowrap">
-                            {{ historia.fecha_fin | date: 'dd/MM/yyyy' }}
-                        </td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="id_iniciativa">
-                        <th mat-header-cell *matHeaderCellDef class="whitespace-nowrap">Iniciativa</th>
-                        <td mat-cell *matCellDef="let historia" class="whitespace-nowrap">
-                            {{ historia.id_iniciativa }}
-                        </td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="validacion_fase_1">
-                        <th mat-header-cell *matHeaderCellDef class="whitespace-nowrap">Val. Fase 1</th>
-                        <td mat-cell *matCellDef="let h" class="whitespace-nowrap">
-                            {{ h.validacion_fase_1 ? 'Sí' : 'No' }}
-                        </td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="validacion_fase_2">
-                        <th mat-header-cell *matHeaderCellDef class="whitespace-nowrap">Val. Fase 2</th>
-                        <td mat-cell *matCellDef="let h" class="whitespace-nowrap">
-                            {{ h.validacion_fase_2 ? 'Sí' : 'No' }}
-                        </td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="validacion_fase_n">
-                        <th mat-header-cell *matHeaderCellDef class="whitespace-nowrap">Val. Fase N</th>
-                        <td mat-cell *matCellDef="let h" class="whitespace-nowrap">
-                            {{ h.validacion_fase_n ? 'Sí' : 'No' }}
-                        </td>
-                    </ng-container>
-
-                    <!-- Filas -->
-                    <tr mat-header-row *matHeaderRowDef="displayedColumns" class="bg-gray-50 text-gray-700"></tr>
-                    <tr mat-row *matRowDef="let row; columns: displayedColumns" class="hover:bg-gray-50"></tr>
-                </table>
+              <mat-form-field appearance="fill" class="w-full">
+                <mat-label>ID Iniciativa</mat-label>
+                <input matInput type="number" formControlName="id_iniciativa" />
+              </mat-form-field>
             </div>
-        </div>
+
+            <div class="space-y-4">
+              <mat-form-field appearance="fill" class="w-full">
+                <mat-label>Descripción</mat-label>
+                <textarea matInput formControlName="descripcion" rows="4"></textarea>
+              </mat-form-field>
+
+              <mat-form-field appearance="fill" class="w-full">
+                <mat-label>Fase</mat-label>
+                <input matInput type="text" formControlName="fase" />
+              </mat-form-field>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <mat-form-field appearance="fill" class="w-full">
+                  <mat-label>Fecha de Inicio</mat-label>
+                  <input matInput [matDatepicker]="pickerInicio" formControlName="fecha_inicio" />
+                  <mat-datepicker-toggle matSuffix [for]="pickerInicio"></mat-datepicker-toggle>
+                  <mat-datepicker #pickerInicio></mat-datepicker>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill" class="w-full">
+                  <mat-label>Fecha de Fin</mat-label>
+                  <input matInput [matDatepicker]="pickerFin" formControlName="fecha_fin" />
+                  <mat-datepicker-toggle matSuffix [for]="pickerFin"></mat-datepicker-toggle>
+                  <mat-datepicker #pickerFin></mat-datepicker>
+                </mat-form-field>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-1 flex flex-wrap items-center gap-x-6 gap-y-2">
+            <mat-checkbox color="primary" formControlName="validacion_fase_1">Validación Fase 1</mat-checkbox>
+            <mat-checkbox color="primary" formControlName="validacion_fase_2">Validación Fase 2</mat-checkbox>
+            <mat-checkbox color="primary" formControlName="validacion_fase_n">Validación Fase N</mat-checkbox>
+          </div>
+
+          <div class="pt-2 flex gap-2">
+            <button mat-raised-button color="primary" type="submit"
+              class="!bg-[#00a1a1] hover:!bg-[#008f8f] !text-white rounded-md px-5">
+              Guardar
+            </button>
+            <button type="button" (click)="closeDialog()"
+              class="rounded-md border px-4 py-2 text-[#006d6d] border-[#00a1a1] hover:bg-[#e8f5f4]">
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
+  </ng-template>
+  <!-- ==================== /POPUP ==================== -->
+
+  <!-- ============ Tabla de historias ============ -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+    <div class="bg-[#00a1a1] text-white px-4 py-2 font-semibold">
+      Historias registradas (Iniciativa {{ idIniciativa || '—' }})
+    </div>
+
+    <div class="p-4 md:p-6">
+      <div *ngIf="cargando" class="text-sm text-gray-600">Cargando historias…</div>
+      <div *ngIf="error" class="text-sm text-red-600">{{ error }}</div>
+
+      <ng-container *ngIf="!cargando && !error">
+        <ng-container *ngIf="historias.length; else noRows">
+          <div class="overflow-x-auto">
+            <div class="rounded-xl border border-[#dbe7e6] overflow-hidden shadow-sm">
+              <table class="w-full text-sm">
+                <thead class="bg-[#00a1a1] text-white">
+                  <tr>
+                    <th class="px-3 py-2 text-left">ID</th>
+                    <th class="px-3 py-2 text-left">Nombre</th>
+                    <th class="px-3 py-2 text-left">Descripción</th>
+                    <th class="px-3 py-2 text-left">Estado</th>
+                    <th class="px-3 py-2 text-left">Fase</th>
+                    <th class="px-3 py-2 text-left">Responsable</th>
+                    <th class="px-3 py-2 text-left">Inicio</th>
+                    <th class="px-3 py-2 text-left">Fin</th>
+                    <th class="px-3 py-2 text-left">V1</th>
+                    <th class="px-3 py-2 text-left">V2</th>
+                    <th class="px-3 py-2 text-left">Vn</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let h of historias"
+                      class="border-t border-[#e8f1f0] odd:bg-[#F3F6FF] even:bg-white hover:bg-[#eaf7f6] transition">
+                    <td class="px-3 py-2">{{ h.id_historia }}</td>
+                    <td class="px-3 py-2 font-medium text-gray-800">{{ h.nombre_historia }}</td>
+                    <td class="px-3 py-2">{{ h.descripcion }}</td>
+                    <td class="px-3 py-2">{{ h.estado }}</td>
+                    <td class="px-3 py-2">{{ h.fase }}</td>
+                    <td class="px-3 py-2">{{ h.responsable || '—' }}</td>
+                    <td class="px-3 py-2">{{ h.fecha_inicio | date:'yyyy-MM-dd' }}</td>
+                    <td class="px-3 py-2">{{ h.fecha_fin     | date:'yyyy-MM-dd' }}</td>
+                    <td class="px-3 py-2">{{ h.validacion_fase_1 }}</td>
+                    <td class="px-3 py-2">{{ h.validacion_fase_2 }}</td>
+                    <td class="px-3 py-2">{{ h.validacion_fase_n }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-template #noRows>
+          <p class="text-sm text-gray-600">No hay historias registradas para esta iniciativa.</p>
+        </ng-template>
+      </ng-container>
+    </div>
+  </div>
+
+  <!-- ===== KPIs + FILTROS (ACTIVIDADES) ===== -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 md:p-6 mb-4">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg md:text-xl font-semibold text-gray-800">
+        Análisis de actividades de la iniciativa
+      </h3>
+      <div class="flex gap-2">
+        <button type="button" class="rounded-md bg-gray-100 px-3 py-2 hover:bg-gray-200" (click)="setDatePreset('hoy')">Hoy</button>
+        <button type="button" class="rounded-md bg-gray-100 px-3 py-2 hover:bg-gray-200" (click)="setDatePreset('7d')">Últimos 7 días</button>
+        <button type="button" class="rounded-md bg-gray-100 px-3 py-2 hover:bg-gray-200" (click)="setDatePreset('30d')">Últimos 30 días</button>
+        <button type="button" class="rounded-md bg-gray-100 px-3 py-2 hover:bg-gray-200" (click)="setDatePreset('todo')">Todo</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+      <div class="rounded-lg border p-3">
+        <div class="text-xs text-gray-500">Minutos totales</div>
+        <div class="text-2xl font-bold text-teal-700">{{ totalMinutos | number:'1.0-0' }}</div>
+      </div>
+      <div class="rounded-lg border p-3">
+        <div class="text-xs text-gray-500">Costo total</div>
+        <div class="text-2xl font-bold text-teal-700">$ {{ totalCosto | number:'1.0-0' }}</div>
+      </div>
+      <div class="rounded-lg border p-3">
+        <div class="text-xs text-gray-500">% Automatización (prom.)</div>
+        <div class="text-2xl font-bold text-teal-700">{{ promedioAutomatizacion | number:'1.0-1' }}%</div>
+      </div>
+    </div>
+
+    <!-- Filtros fecha -->
+    <div class="mb-4 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+      <div class="flex items-end gap-2">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Desde</label>
+          <input
+            type="date"
+            class="mt-1 rounded-md border bg-white px-3 py-2"
+            [(ngModel)]="dateFrom"
+            (ngModelChange)="onDateInputsChanged()" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Hasta</label>
+          <input
+            type="date"
+            class="mt-1 rounded-md border bg-white px-3 py-2"
+            [(ngModel)]="dateTo"
+            (ngModelChange)="onDateInputsChanged()" />
+        </div>
+        <button type="button"
+                class="h-[38px] inline-flex items-center rounded-md border px-3 py-2 text-teal-700 border-teal-600 hover:bg-teal-50"
+                (click)="onApplyDateFilter()">
+          Aplicar
+        </button>
+      </div>
+    </div>
+
+    <!-- GRÁFICOS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div class="rounded-md border p-4 col-span-1 xl:col-span-2">
+        <h5 class="font-semibold mb-2">Pareto por actividad (min)</h5>
+        <div class="h-72"><canvas #paretoCanvas></canvas></div>
+      </div>
+
+      <div class="rounded-md border p-4">
+        <h5 class="font-semibold mb-2">Por tipo de actividad</h5>
+        <div class="h-72"><canvas #pieTipoCanvas></canvas></div>
+      </div>
+
+      <div class="rounded-md border p-4">
+        <h5 class="font-semibold mb-2">Por periodicidad</h5>
+        <div class="h-72"><canvas #doughPeriodicidadCanvas></canvas></div>
+      </div>
+
+      <div class="rounded-md border p-4 col-span-1 xl:col-span-2">
+        <h5 class="font-semibold mb-2">Uso por herramienta (min)</h5>
+        <div class="h-72"><canvas #barHerramientaCanvas></canvas></div>
+      </div>
+    </div>
+
+    <div *ngIf="!actividadesFiltradas.length" class="text-gray-600 text-sm mt-3">
+      No se encontraron actividades para esta iniciativa con el filtro actual.
+    </div>
+  </div>
 </div>
