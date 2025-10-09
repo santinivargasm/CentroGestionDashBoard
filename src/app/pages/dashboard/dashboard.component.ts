@@ -1,681 +1,609 @@
+import { Component, OnDestroy, OnInit, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, ChangeDetectorRef, inject, viewChild } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { finalize } from 'rxjs/operators';
-import { Chart } from 'chart.js/auto';
-import type { Chart as ChartJS } from 'chart.js';
-import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { filter } from 'rxjs/operators';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { Subscription } from 'rxjs';
 
-const BASE_URL = 'http://127.0.0.1:5000/api';
+import { EmailSessionService } from '../../core/email-session.service';
 
-const APP_PIE_PALETTE = ['#00a1a1','#FFB600','#008f8f','#1d2530','#14b8a6','#0ea5e9','#64748b'];
-function buildPalette(len: number): string[] {
-  const out: string[] = [];
-  for (let i = 0; i < len; i++) out.push(APP_PIE_PALETTE[i % APP_PIE_PALETTE.length]);
-  return out;
-}
-
-// ====== Tipos ======
-export interface Colaborador {
-  id_empleado: string | number;
+type Colaborador = {
   nombre: string;
-  apellido: string;
-  fecha_nacimiento: Date | string;
+  celular: string;
   correo_electronico: string;
-  puesto: string;
-  departamento: string;
-  estado_chapter: string;
-  automatizacion: string;
-  analitica_avanzada: string;
-  gerencia: string;
   vicepresidencia: string;
-  jefe_directo: string;
-}
-export interface Iniciativa {
-  apellido: string;
-  avance: number;
-  correo_electronico: string;
-  descripcion: string;
-  estado_id: number;
-  fecha_fin_estimada: string;
-  fecha_fin_real: string;
-  fecha_inicio: string;
-  id_iniciativa: number;
-  nombre_colaborador: string;
-  nombre_iniciativa: string;
-  prioridad_id: number;
-}
-type ColabIniRow = {
-  id_iniciativa: number;
-  nombre_iniciativa: string;
-  descripcion: string;
-  fecha_inicio: string;
-  fecha_fin_estimada: string;
-  fecha_fin_real: string;
-  nombre_colaborador: string;
-  apellido: string;
-  correo_electronico: string;
-  estado_id: number;
-  prioridad_id: number;
-  avance: number;
-};
-interface DetalleUsuarioVM { colaborador: Colaborador; iniciativas: Iniciativa[]; }
-
-type NuevaIniciativaPayload = {
-  id_iniciativa?: number | null;
-  nombre: string;
-  descripcion: string;
-  fecha_inicio: string;
-  fecha_fin_estimada: string;
-  fecha_fin_real: string;
-  estado_id: number | null;
-  prioridad_id: number | null;
-  tipo_iniciativa_id: number | null;
-  bucket_id: number | null;
-  avance: number | null;
-  comentario: string;
-  sprint_id: number | null;
-  talla_id: number | null;
-  tipo_elemento_id: number | null;
-  ruta_acceso: string;
-  id_proyecto: number | null;
-  id_empleado: string;
-  correo_electronico: string;
-  id_modificador: string;
+  gerencia: string;
+  direccion_area: string;
+  nombre_jefe_inmediato: string;
+  correo_jefe_inmediato: string;
+  nombre_jefe_inmediato_2: string;
+  correo_jefe_inmediato_2: string;
 };
 
-export interface ActividadDiaria {
-  id_actividad: number;
-  fecha: Date | string | null;
-  nombre_actividad: string;
-  descripcion: string;
+type Iniciativa = {
+  id_iniciativa: number;
+  nombre_iniciativa: string;
+  descripcion_iniciativa: string;
+  estado_iniciativa: string;
+  avance: number;
+  correo_electronico: string;
   tipo_actividad: string;
   periodicidad: string;
   carga_minutos: number;
-  herramientas: string;
-  id_historia: number | null;
-  id_iniciativa: number | null;
-  correo_electronico: string;
-  correo_electronico_buckup: string;
-  rol: 'titular' | 'backup' | 'otro';
-}
+  herramientas?: string;
+};
 
-type NuevaActividadPayload = {
-  id_actividad?: number | null;
+type Actividad = {
+  id_actividad: number;
   fecha: string;
   nombre_actividad: string;
-  descripcion?: string | null;
+  descripcion?: string;
   tipo_actividad: string;
   periodicidad: string;
   carga_minutos: number;
-  herramientas?: string | null;
-  id_historia?: number | null;
+  herramientas?: string;
+  id_historia?: number;
+  id_iniciativa?: number;
   correo_electronico: string;
-  correo_electronico_buckup?: string | null;
+  correo_electronico_buckup?: string;
 };
 
-interface HistoriaLite { id_historia: number; nombre_historia: string; }
+/** Opción para el selector (colaborador + jefes) */
+type OpcionCorreo = {
+  correo: string;
+  etiqueta: string;
+  rol: string; // 'colaborador' | 'jefe1' | 'jefe2'
+};
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
-  templateUrl: './dashboard.html',
-  styleUrls: ['./dashboard.css'],
+  imports: [CommonModule, FormsModule, HttpClientModule],
+  templateUrl: './dashboard.html'
 })
-export class DashboardComponent {
-  // Canvas refs
-  public chart = viewChild<ElementRef<HTMLCanvasElement>>('chart');
-  public circle = viewChild<ElementRef<HTMLCanvasElement>>('circle');
-  public paretoCanvas = viewChild<ElementRef<HTMLCanvasElement>>('paretoCanvas');
-  public pieTipoCanvas = viewChild<ElementRef<HTMLCanvasElement>>('pieTipoCanvas');
-  public doughPeriodicidadCanvas = viewChild<ElementRef<HTMLCanvasElement>>('doughPeriodicidadCanvas');
-
+export class DashboardComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
-  private cdr = inject(ChangeDetectorRef);
-  private router = inject(Router);
+  private session = inject(EmailSessionService);
+  private API = 'https://hubai.azurewebsites.net';
+  private subs: Subscription[] = [];
 
-  public userList: Colaborador[] = [];
-  public selectedUser: Colaborador | null = null;
+  // Orquestación (modal)
+  mostrarSelectorCorreo = false;
+  correoSeleccionado = '';
 
-  public isModalOpen = false;
-  public isLoadingDetail = false;
-  public modalError: string | null = null;
+  // actor vs viewer
+  private get actorCorreo(): string { return (this.session.getEmail() || '').trim().toLowerCase(); }
+  viewerCorreo = '';
 
-  public detailVm: DetalleUsuarioVM | null = null;
+  // Datos
+  opcionesColaborador: OpcionCorreo[] = [];
+  colaborador: Colaborador | null = null;
+  iniciativas: Iniciativa[] = [];
+  actividades: Actividad[] = [];
 
-  // INICIATIVAS
-  public isCreating = false;
-  public isSaving = false;
-  public newIni: NuevaIniciativaPayload | null = null;
-  public isNewIniModalOpen = false;
+  subordinados: Array<{ nombre: string; correo_electronico: string }> = [];
 
-  // ACTIVIDADES
-  public actividades: ActividadDiaria[] = [];
-  public totalMinutosActividades = 0;
-  private allActividades: ActividadDiaria[] = [];
-  public dateFrom: string = '';
-  public dateTo: string = '';
+  // Negocio
+  private WORKDAYS_PER_WEEK = 5;
+  private WEEKS_PER_MONTH = 4.33;
 
-  private paretoChart?: ChartJS;
-  private pieTipoChart?: ChartJS<'pie', number[], string>;
-  private doughPeriodicidadChart?: ChartJS<'doughnut', number[], string>;
+  thresholdHoras = 44;
+  get thresholdMinutos(): number { return this.thresholdHoras * 60; }
+  get thresholdMensualMin(): number { return Math.round(this.thresholdMinutos * this.WEEKS_PER_MONTH); }
 
-  // NUEVA ACTIVIDAD
-  public isNewActModalOpen = false;
-  public isSavingAct = false;
-  public newAct: NuevaActividadPayload | null = null;
-  public modalErrorAct: string | null = null;
+  // KPIs
+  totalMinutos = 0;
+  totalMinutosMensual = 0;
 
-  public showFullDetails = false;
+  // Datasets
+  paretoLabels: string[] = [];
+  paretoMinutos: number[] = [];
+  tipoLabels: string[] = [];
+  tipoMinutos: number[] = [];
+  perLabels: string[] = [];
+  perMinutos: number[] = [];
+  herrLabels: string[] = [];
+  herrMinutos: number[] = [];
+  distSemLabels: string[] = [];
+  distSemValues: number[] = [];
+  distMesLabels: string[] = [];
+  distMesValues: number[] = [];
+  topCandidatos: Array<{ nombre: string; minutos: number; score: number; impacto: number }> = [];
 
-  public HERRAMIENTAS_OPTS: string[] = [
-    "", "Power BI", "Cloudera", "Python", "Excel", "Postman", "Outlook", "Teams",
-    "Copilot", "Word", "PowerPoint", "SharePoint", "Power Platform", "Azure", "SAP",
-    "Jira", "Confluence", "GitHub", "VS Code", "Notion", "Figma", "Tableau"
-  ];
-  public TIPOS_OPTS: string[] = [
-    "", "Power BI", "IA", "Machine Learning", "Python", "Query", "Dash", "DPA",
-    "Procesamiento de Datos", "Workflow", "Reunión", "Presentación", "Documentación",
-    "Automatización", "Análisis", "Diseño", "Testing", "Scrum", "Soporte"
-  ];
-  public herramientaSel: string = '';
+  // Chart.js
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private ChartLib: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private chartRefs: Record<string, any> = {};
 
-  public historiasOpts: HistoriaLite[] = [];
-  public historiasLoading = false;
+  // Paleta
+  private PALETTE = {
+    teal: '#0D9488',
+    tealDark: '#0F766E',
+    tealLight: '#5EEAD4',
+    amber: '#F59E0B',
+    gray900: '#111827',
+    grid: '#E5E7EB'
+  };
 
-  // ---- Reapertura modal al volver ----
-  private lastReopenKey = ''; // evita reabrir varias veces el mismo colaborador
-
-  constructor() {
-    // Si el componente sigue vivo (p.ej. volvemos a /dashboard y no se destruye),
-    // escuchamos cada NavigationEnd para intentar reabrir el modal.
-    this.router.events
-      .pipe(filter(ev => ev instanceof NavigationEnd))
-      .subscribe(() => this.maybeReopenFromState());
+  private colorList(n: number): string[] {
+    const base = [this.PALETTE.teal, this.PALETTE.amber, this.PALETTE.tealDark, '#10B981', '#14B8A6', '#0EA5E9', '#F59E0B'];
+    const out: string[] = [];
+    for (let i = 0; i < n; i++) out.push(base[i % base.length]);
+    return out;
   }
 
-  private getNavState(): any {
-    // history.state funciona mejor al llegar al destino
-    return history.state;
-  }
-
-  private maybeReopenFromState() {
-    const st = this.getNavState();
-    if (!st?.reopenModal || !st?.colaborador) return;
-
-    const key = `${st.colaborador?.correo_electronico || ''}|${st.iniciativa?.id_iniciativa || ''}`;
-    if (key && key === this.lastReopenKey) return; // ya lo abrimos para este state
-
-    this.lastReopenKey = key;
-    // Abrimos el modal con el colaborador que venía en el state
-    setTimeout(() => this.verDetalle(st.colaborador), 0);
-  }
-  // ------------------------------------
-
-  // ===== Ciclo de vida =====
-  public ngOnInit() {
-    this.getUsers();
-    // Intento temprano (por si el componente fue recreado)
-    this.maybeReopenFromState();
-  }
-  public ngAfterViewInit() { this.initCharts(); }
-
-  // ===== Datos =====
-  public getUsers() {
-    this.http.get<Colaborador[]>(`${BASE_URL}/colaboradores`).subscribe({
-      next: (result) => {
-        this.userList = result ?? [];
-        // Intento cuando ya hay datos
-        this.maybeReopenFromState();
-      },
-      error: (err) => {
-        console.error('Error cargando colaboradores:', err);
-        this.userList = [];
-        // Igual intentamos (si reabrir no depende de la lista)
-        this.maybeReopenFromState();
-      }
-    });
-  }
-
-  public verDetalle(item: Colaborador) {
-    this.selectedUser = item;
-    this.isModalOpen = true;
-    this.showFullDetails = false;
-    this.cdr.detectChanges();
-
-    this.getUserDetailYIniciativas(item.correo_electronico);
-    this.loadActividadesFor(item.correo_electronico);
-  }
-
-  private getUserDetailYIniciativas(correo: string) {
-    this.isLoadingDetail = true;
-    this.modalError = null;
-    this.detailVm = null;
-
-    this.http.get<ColabIniRow[]>(`${BASE_URL}/colaborador/${encodeURIComponent(correo)}`)
-      .pipe(finalize(() => { this.isLoadingDetail = false; this.cdr.detectChanges(); }))
-      .subscribe({
-        next: (rows) => {
-          const base = this.selectedUser;
-
-          if (!rows || rows.length === 0) {
-            if (!base) { this.modalError = `No se encontró detalle para: ${correo}`; return; }
-            this.detailVm = { colaborador: { ...base }, iniciativas: [] };
-            return;
-          }
-
-          const r0 = rows[0];
-          const colaborador: Colaborador = {
-            id_empleado: base?.id_empleado ?? '',
-            nombre: r0.nombre_colaborador ?? base?.nombre ?? '',
-            apellido: r0.apellido ?? base?.apellido ?? '',
-            fecha_nacimiento: base?.fecha_nacimiento ?? '',
-            correo_electronico: r0.correo_electronico ?? base?.correo_electronico ?? '',
-            puesto: base?.puesto ?? '',
-            departamento: base?.departamento ?? '',
-            estado_chapter: base?.estado_chapter ?? '',
-            automatizacion: base?.automatizacion ?? '',
-            analitica_avanzada: base?.analitica_avanzada ?? '',
-            gerencia: base?.gerencia ?? '',
-            vicepresidencia: base?.vicepresidencia ?? '',
-            jefe_directo: base?.jefe_directo ?? '',
-          };
-
-          const iniciativas: Iniciativa[] = rows.map((r) => ({
-            id_iniciativa: r.id_iniciativa,
-            nombre_iniciativa: r.nombre_iniciativa,
-            descripcion: r.descripcion,
-            fecha_inicio: r.fecha_inicio,
-            fecha_fin_estimada: r.fecha_fin_estimada,
-            fecha_fin_real: r.fecha_fin_real,
-            nombre_colaborador: r.nombre_colaborador,
-            apellido: r.apellido,
-            correo_electronico: r.correo_electronico,
-            estado_id: r.estado_id,
-            prioridad_id: r.prioridad_id,
-            avance: r.avance,
-          }));
-
-          this.detailVm = { colaborador, iniciativas };
-          this.cdr.detectChanges();
-        },
-        error: (err) => {
-          console.error('Error obteniendo detalle/iniciativas:', err);
-          this.modalError = 'Ocurrió un error obteniendo la información.';
-          this.cdr.detectChanges();
+  async ngOnInit(): Promise<void> {
+    this.subs.push(
+      this.session.emailChanges().subscribe((correo: string | null) => {
+        if (correo) {
+          this.mostrarSelectorCorreo = false;
+          this.viewerCorreo = (correo || '').trim().toLowerCase();
+          this.cargarSubordinadosDelActor();
+          this.cargarColaborador(this.viewerCorreo);
+          this.cargarIniciativas(this.viewerCorreo);
+        } else {
+          this.mostrarSelectorCorreo = true;
+          this.cargarOpcionesColaborador();
         }
-      });
-  }
+      })
+    );
 
-  public goToHistoryUser(ini: Iniciativa) {
-    this.router.navigate([`/history-user/${ini.id_iniciativa}`], {
-      queryParams: { id: ini.id_iniciativa },
-      state: { iniciativa: ini, colaborador: this.detailVm?.colaborador }
-    });
-  }
-
-  // ===== Modal principal =====
-  public closeModal() {
-    this.isModalOpen = false;
-    this.isCreating = false;
-    this.showFullDetails = false;
-    this.dateFrom = '';
-    this.dateTo = '';
-    if (!this.isNewIniModalOpen) this.newIni = null;
-    if (!this.isNewActModalOpen) this.newAct = null;
-    this.destroyChartsActividades();
-  }
-  public onBackdropClick(ev: MouseEvent) { if (ev.target === ev.currentTarget) this.closeModal(); }
-
-  @HostListener('document:keydown.escape')
-  public onEsc() {
-    if (this.isNewActModalOpen) this.closeNewActModal();
-    else if (this.isNewIniModalOpen) this.closeNewIniModal();
-    else if (this.isModalOpen) this.closeModal();
-  }
-
-  public toggleUserDetails() { this.showFullDetails = !this.showFullDetails; }
-
-  // ===== Charts pequeños (opcionales) =====
-  public initCharts() {
-    const chartEl = this.chart?.()?.nativeElement;
-    const circleEl = this.circle?.()?.nativeElement;
-    if (!chartEl || !circleEl) return;
-
-    new Chart(chartEl, {
-      type: 'line',
-      data: {
-        labels: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
-        datasets: [{ label: 'Vistas', data: [10,20,30,25,40,55,65,75,85,95,105,115], borderColor: '#FFFFFF', backgroundColor: 'rgba(0, 0, 192, 0.25)', fill: 'start' }],
-      },
-      options: {
-        maintainAspectRatio: false,
-        elements: { line: { tension: 0.4 } },
-        scales: {
-          x: { ticks: { color: '#FFF' }, grid: { color: '#FFFFFF50' } },
-          y: { ticks: { color: '#FFF' }, grid: { color: '#FFFFFF30' } },
-        },
-        plugins: { legend: { labels: { color: '#FFF' } } },
-      },
-    });
-
-    new Chart(circleEl, {
-      type: 'pie',
-      data: {
-        labels: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
-        datasets: [{ label: 'Vistas', data: [10,20,30,40,50,60,70,80,90,100,110,120], backgroundColor: ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899','#f97316','#14b8a6','#0ea5e9','#64748b','#84cc16','#eab308'], borderColor: 'white', hoverOffset: 4 }],
-      },
-      options: { maintainAspectRatio: false, plugins: { legend: { labels: { color: '#FFF' } } } },
-    });
-  }
-
-  // ===== Nueva iniciativa =====
-  public openNewIniModal(colab: Colaborador | null) {
-    const who = colab ?? this.selectedUser ?? this.detailVm?.colaborador;
-    if (!who) { this.modalError = 'No hay colaborador seleccionado.'; return; }
-
-    this.newIni = {
-      id_iniciativa: null, nombre: '', descripcion: '',
-      fecha_inicio: '', fecha_fin_estimada: '', fecha_fin_real: '',
-      estado_id: null, prioridad_id: null, tipo_iniciativa_id: null,
-      bucket_id: null, avance: 0, comentario: '',
-      sprint_id: null, talla_id: null, tipo_elemento_id: null,
-      ruta_acceso: '', id_proyecto: null,
-      id_empleado: String(who.id_empleado),
-      correo_electronico: String(who.correo_electronico),
-      id_modificador: String(who.id_empleado),
-    };
-
-    this.selectedUser = who;
-    this.isNewIniModalOpen = true;
-    this.isCreating = true;
-    this.cdr.detectChanges();
-  }
-  public closeNewIniModal() { this.isNewIniModalOpen = false; this.isCreating = false; this.newIni = null; this.cdr.detectChanges(); }
-  public onNewIniBackdropClick(ev: MouseEvent) { if (ev.target === ev.currentTarget) this.closeNewIniModal(); }
-
-  public submitNewIni() {
-    if (!this.newIni) return;
-
-    const nombre = String(this.newIni.nombre ?? '');
-    const descripcion = String(this.newIni.descripcion ?? '');
-    const id_empleado = String(this.newIni.id_empleado ?? '');
-    const correo = String(this.newIni.correo_electronico ?? '');
-
-    if (!nombre.trim() || !descripcion.trim() || !id_empleado.trim() || !correo.trim()) {
-      this.modalError = 'Nombre, descripción, id_empleado y correo_electronico son obligatorios.';
-      return;
+    const actual = this.session.getEmail();
+    if (actual) {
+      this.viewerCorreo = (actual || '').trim().toLowerCase();
+      this.cargarSubordinadosDelActor();
+      this.cargarColaborador(this.viewerCorreo);
+      this.cargarIniciativas(this.viewerCorreo);
+    } else {
+      this.mostrarSelectorCorreo = true;
+      this.cargarOpcionesColaborador();
     }
 
-    this.isSaving = true;
-    this.modalError = null;
+    try {
+      const mod = await import('chart.js/auto');
+      this.ChartLib = (mod as any).default || (mod as any);
 
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+      const Chart = this.ChartLib;
+      // Estilo visual
+      Chart.defaults.font.family =
+        'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial';
+      Chart.defaults.color = this.PALETTE.gray900;
+      Chart.defaults.borderColor = this.PALETTE.grid;
+      Chart.defaults.scale.grid.color = this.PALETTE.grid;
+      Chart.defaults.plugins.legend.labels.usePointStyle = true;
+      Chart.defaults.plugins.legend.labels.pointStyle = 'rectRounded';
+      Chart.defaults.plugins.tooltip.backgroundColor = this.PALETTE.gray900;
+      Chart.defaults.plugins.tooltip.titleColor = '#F9FAFB';
+      Chart.defaults.plugins.tooltip.bodyColor = '#F3F4F6';
 
-    this.http.post(`${BASE_URL}/iniciativas`, this.newIni, { headers })
-      .pipe(finalize(() => { this.isSaving = false; this.cdr.detectChanges(); }))
-      .subscribe({
-        next: () => {
-          const correoEnv = this.newIni!.correo_electronico;
-          this.newIni = null;
-          this.isCreating = false;
-          this.isNewIniModalOpen = false;
-          this.getUserDetailYIniciativas(correoEnv);
-        },
-        error: (err) => {
-          console.error('Error creando iniciativa:', err);
-          this.modalError = (err?.error?.error) || 'No se pudo crear la iniciativa.';
-        }
-      });
+      // 🔒 Nada responsivo a nivel global
+      Chart.defaults.responsive = false;
+      Chart.defaults.maintainAspectRatio = false;
+      Chart.defaults.animation = false;
+
+      this.recomputeAndRender();
+    } catch (e) {
+      console.warn('Chart.js no está instalado. npm i chart.js', e);
+    }
   }
 
-  // ===== ACTIVIDADES =====
-  private normalizeFecha(rows: ActividadDiaria[]): ActividadDiaria[] {
-    return (rows ?? []).map(r => {
-      const f = (r as any).fecha;
-      if (!f) return { ...r, fecha: null };
-      const d = new Date(String(f));
-      return { ...r, fecha: isNaN(d.getTime()) ? null : d };
+  ngOnDestroy(): void {
+    this.subs.forEach(s => s.unsubscribe());
+    this.destroyCharts();
+    if (this.resizeTimer) clearTimeout(this.resizeTimer);
+  }
+
+  // ============ RESIZE (repinta con debounce) ============
+  private resizeTimer: any = null;
+  @HostListener('window:resize')
+  _onWindowResize(): void {
+    if (!this.ChartLib) return;
+    if (this.resizeTimer) clearTimeout(this.resizeTimer);
+    this.resizeTimer = setTimeout(() => this.renderCharts(), 180);
+  }
+
+  // ===== Modales / sesión =====
+  abrirSelectorCorreo(): void {
+    this.mostrarSelectorCorreo = true;
+    if (!this.opcionesColaborador.length) this.cargarOpcionesColaborador();
+    this.correoSeleccionado = this.session.getEmail() || '';
+  }
+  cancelarSelector(): void {
+    if (!this.session.getEmail()) return;
+    this.mostrarSelectorCorreo = false;
+  }
+  confirmarSelector(): void {
+    const correo = (this.correoSeleccionado || '').trim();
+    if (!correo) return;
+    this.session.setEmail(correo);
+    this.mostrarSelectorCorreo = false;
+  }
+
+  private cargarOpcionesColaborador(): void {
+    this.http.get<OpcionCorreo[]>(`${this.API}/api/correos_select`).subscribe({
+      next: rows => this.opcionesColaborador = (rows || []).filter(r => (r?.correo || '').trim() !== ''),
+      error: err => console.error('Error listando correos_select:', err)
     });
   }
 
-  private loadActividadesFor(correo: string) {
-    this.http.get<ActividadDiaria[]>(`${BASE_URL}/actividades_por_correo/${encodeURIComponent(correo)}`)
+  private cargarSubordinadosDelActor(): void {
+    const actor = this.actorCorreo;
+    if (!actor) { this.subordinados = []; return; }
+    this.http
+      .get<Array<{ nombre: string; correo_electronico: string }>>(
+        `${this.API}/api/subordinados_de/${encodeURIComponent(actor)}`
+      )
       .subscribe({
         next: rows => {
-          const normalized = this.normalizeFecha(rows);
-
-          // SOLO titular
-          const delUsuario = normalized.filter(r =>
-            (r.correo_electronico?.toLowerCase() === correo.toLowerCase())
-          );
-
-          this.allActividades = delUsuario;
-          this.actividades = delUsuario.slice();
-
-          this.applyActivityFilters(false);
-          this.totalMinutosActividades = this.actividades.reduce((acc, r) => acc + (r.carga_minutos || 0), 0);
-
-          this.cdr.detectChanges();
-          const ok = this.renderChartsActividades();
-          if (!ok) {
-            setTimeout(() => {
-              this.cdr.detectChanges();
-              this.renderChartsActividades();
-            }, 0);
-          }
+          const yo = { nombre: 'Yo', correo_electronico: actor };
+          const clean = (rows || []).filter(r => (r?.correo_electronico || '').trim() !== '');
+          this.subordinados = [yo, ...clean];
         },
-        error: err => {
-          console.error('[ACTIVIDADES] error', err);
-          this.allActividades = [];
-          this.actividades = [];
-          this.totalMinutosActividades = 0;
-          this.destroyChartsActividades();
-        }
+        error: _ => { this.subordinados = []; }
       });
   }
 
-  private toEpochUTC(v: string | Date): number { const d = (v instanceof Date) ? v : new Date(v); return d.getTime(); }
-  private ymdToEpochStart(ymd: string): number { const [y,m,d]=ymd.split('-').map(Number); return Date.UTC(y, m-1, d, 0,0,0,0); }
-  private ymdToEpochEnd(ymd: string): number { const [y,m,d]=ymd.split('-').map(Number); return Date.UTC(y, m-1, d, 23,59,59,999); }
-
-  public setDatePreset(preset: 'hoy' | '7d' | '30d' | 'todo') {
-    const now = new Date();
-    const toYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-
-    if (preset === 'todo') { this.dateFrom = ''; this.dateTo = ''; }
-    else if (preset === 'hoy') { const ymd = toYMD(now); this.dateFrom = ymd; this.dateTo = ymd; }
-    else if (preset === '7d') { const from = new Date(now); from.setDate(from.getDate() - 6); this.dateFrom = toYMD(from); this.dateTo = toYMD(now); }
-    else if (preset === '30d') { const from = new Date(now); from.setDate(from.getDate() - 29); this.dateFrom = toYMD(from); this.dateTo = toYMD(now); }
-    this.applyActivityFilters(true);
-  }
-
-  public applyActivityFilters(repaint = false) {
-    if (this.dateFrom && this.dateTo && this.dateFrom > this.dateTo) { const a=this.dateFrom; this.dateFrom=this.dateTo; this.dateTo=a; }
-
-    let filtered = this.allActividades.length ? this.allActividades : this.actividades;
-
-    if (this.dateFrom) {
-      const fromEpoch = this.ymdToEpochStart(this.dateFrom);
-      filtered = filtered.filter(r =>
-        r.fecha instanceof Date && !isNaN(r.fecha.getTime()) && this.toEpochUTC(r.fecha) >= fromEpoch
-      );
-    }
-    if (this.dateTo) {
-      const toEpoch = this.ymdToEpochEnd(this.dateTo);
-      filtered = filtered.filter(r =>
-        r.fecha instanceof Date && !isNaN(r.fecha.getTime()) && this.toEpochUTC(r.fecha) <= toEpoch
-      );
-    }
-
-    this.actividades = filtered;
-    this.totalMinutosActividades = this.actividades.reduce((acc, r) => acc + (r.carga_minutos || 0), 0);
-
-    if (repaint) {
-      this.destroyChartsActividades();
-      this.cdr.detectChanges();
-      this.renderChartsActividades();
-    }
-  }
-
-  public onDateInputsChanged() { this.applyActivityFilters(true); }
-  public onApplyDateFilter() { this.applyActivityFilters(true); }
-
-  private destroyChartsActividades() {
-    this.paretoChart?.destroy(); this.paretoChart = undefined;
-    this.pieTipoChart?.destroy(); this.pieTipoChart = undefined;
-    this.doughPeriodicidadChart?.destroy(); this.doughPeriodicidadChart = undefined;
-  }
-
-  private groupSum<T extends Record<string, any>>(rows: T[], key: (r: T) => string, val: (r: T) => number) {
-    const map = new Map<string, number>();
-    rows.forEach(r => { const k=(key(r)||'(sin dato)').trim(); map.set(k,(map.get(k)||0)+(val(r)||0)); });
-    return Array.from(map.entries()).map(([k,v])=>({key:k,value:v})).sort((a,b)=>b.value-a.value);
-  }
-
-  private renderChartsActividades(): boolean {
-    const paretoEl = this.paretoCanvas()?.nativeElement;
-    const pieTipoEl = this.pieTipoCanvas()?.nativeElement;
-    const doughEl = this.doughPeriodicidadCanvas()?.nativeElement;
-    if (!paretoEl || !pieTipoEl || !doughEl) return false;
-
-    this.destroyChartsActividades();
-
-    const byActividad = this.groupSum(this.actividades, r => r.nombre_actividad, r => r.carga_minutos);
-    const labelsPareto = byActividad.map(x => x.key);
-    const valores = byActividad.map(x => x.value);
-    const total = valores.reduce((a,b)=>a+b,0);
-    const acumuladoPct = valores.map((v,i)=>{ const sum = valores.slice(0,i+1).reduce((a,b)=>a+b,0); return total ? +(((sum/total)*100).toFixed(2)) : 0; });
-
-    const UMBRAL_MINUTOS = 44 * 60;
-    const maxBar = Math.max(...valores, 0);
-    const yMax = Math.max(UMBRAL_MINUTOS, Math.ceil(maxBar * 1.2));
-
-    this.paretoChart = new Chart(paretoEl, {
-      type: 'bar',
-      data: {
-        labels: labelsPareto,
-        datasets: [
-          { type: 'bar', label: 'Minutos', data: valores, backgroundColor: 'rgba(13,148,136,0.65)', borderColor: '#0f766e', borderWidth: 1, yAxisID: 'y', order: 1 },
-          { type: 'line', label: `Umbral 44h (${UMBRAL_MINUTOS} min)`, data: new Array(labelsPareto.length).fill(UMBRAL_MINUTOS), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.2)', borderDash: [6,6], pointRadius: 0, yAxisID: 'y', order: 3 },
-          { type: 'line', label: 'Acumulado (%)', data: acumuladoPct, borderColor: '#FFB600', backgroundColor: 'rgba(255,182,0,0.2)', tension: 0.3, yAxisID: 'y1', order: 2 },
-        ]
-      },
-      options: {
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'top', labels: { color: '#111827' } }, tooltip: { mode: 'index', intersect: false } },
-        scales: {
-          x: { ticks: { autoSkip: true, maxRotation: 0, color: '#111827' } },
-          y: { title: { display: true, text: 'Minutos' }, ticks: { color: '#111827' }, max: yMax },
-          y1:{ position:'right', min:0, max:100, grid:{ drawOnChartArea:false }, title:{ display:true, text:'Acumulado %' }, ticks:{ color:'#111827' } }
-        }
-      }
+  private cargarColaborador(correo: string): void {
+    this.http.get<Colaborador[]>(`${this.API}/api/colaborador/${encodeURIComponent(correo)}`).subscribe({
+      next: rows => this.colaborador = rows && rows.length ? rows[0] : null,
+      error: err => console.error('Error obteniendo colaborador:', err)
     });
+  }
 
-    const byTipo = this.groupSum(this.actividades, r => r.tipo_actividad, r => r.carga_minutos);
-    const pieColors = buildPalette(byTipo.length);
-    this.pieTipoChart = new Chart(pieTipoEl, {
-      type: 'pie',
-      data: { labels: byTipo.map(x=>x.key), datasets: [{ label:'Minutos', data: byTipo.map(x=>x.value), backgroundColor: pieColors, borderColor:'#ffffff', borderWidth:2, hoverOffset:10 }] },
-      options: { maintainAspectRatio: false, plugins: { legend: { position:'bottom', labels:{ color:'#111827' } } } }
+  private cargarIniciativas(correo: string): void {
+    this.http.get<Iniciativa[]>(`${this.API}/api/iniciativas_por_correo/${encodeURIComponent(correo)}`).subscribe({
+      next: rows => { this.iniciativas = rows || []; this.recomputeAndRender(); },
+      error: err => console.error('Error obteniendo iniciativas:', err)
     });
+  }
 
-    const byPer = this.groupSum(this.actividades, r => r.periodicidad, r => r.carga_minutos);
-    const doughColors = buildPalette(byPer.length);
-    this.doughPeriodicidadChart = new Chart(doughEl, {
-      type: 'doughnut',
-      data: { labels: byPer.map(x=>x.key), datasets: [{ label:'Minutos', data: byPer.map(x=>x.value), backgroundColor: doughColors, borderColor:'#ffffff', borderWidth:2, hoverOffset:10 }] },
-      options: { maintainAspectRatio:false, cutout:'55%', plugins:{ legend:{ position:'bottom', labels:{ color:'#111827' } } } }
-    });
+  onChangeViewer(correoEmpleado: string): void {
+    const c = (correoEmpleado || '').trim().toLowerCase();
+    if (!c || c === this.viewerCorreo) return;
+    this.viewerCorreo = c;
+    this.cargarColaborador(this.viewerCorreo);
+    this.cargarIniciativas(this.viewerCorreo);
+  }
 
+  // ===== Frecuencias / helpers =====
+  private weekFactor(p: string): number {
+    const v = (p || '').toLowerCase().trim();
+    if (/diar/i.test(v)) return this.WORKDAYS_PER_WEEK;
+    if (/semanal|weekly|semana/.test(v)) return 1;
+    if (/quincenal/.test(v)) return 0.5;
+    if (/mensual|month/.test(v)) return 1 / this.WEEKS_PER_MONTH;
+    if (/bimestral/.test(v)) return 1 / (2 * this.WEEKS_PER_MONTH);
+    if (/trimestral/.test(v)) return 1 / (3 * this.WEEKS_PER_MONTH);
+    if (/semestral/.test(v)) return 1 / (6 * this.WEEKS_PER_MONTH);
+    if (/anual|a\u00f1o/.test(v)) return 1 / 52;
+    if (/ad.?hoc|puntual|eventual/.test(v)) return 0;
+    return 0;
+  }
+  private monthFactor(p: string): number {
+    const v = (p || '').toLowerCase().trim();
+    if (/diar/i.test(v)) return this.WORKDAYS_PER_WEEK * this.WEEKS_PER_MONTH;
+    if (/semanal|weekly|semana/.test(v)) return this.WEEKS_PER_MONTH;
+    if (/quincenal/.test(v)) return 2;
+    if (/mensual|month/.test(v)) return 1;
+    if (/bimestral/.test(v)) return 0.5;
+    if (/trimestral/.test(v)) return 1 / 3;
+    if (/semestral/.test(v)) return 1 / 6;
+    if (/anual|a\u00f1o/.test(v)) return 1 / 12;
+    if (/ad.?hoc|puntual|eventual/.test(v)) return 0;
+    return 0;
+  }
+  private isActiva(estado: string): boolean {
+    const v = (estado || '').toLowerCase().trim();
+    if (/finalizad|cerrad|completad|cancelad/.test(v)) return false;
     return true;
   }
 
-  // ===== Nueva actividad =====
-  public openNewActModal(colab: Colaborador | null) {
-    const who = colab ?? this.selectedUser ?? this.detailVm?.colaborador;
-    if (!who) { this.modalErrorAct = 'No hay colaborador seleccionado.'; return; }
+  private recomputeAndRender(): void {
+    this.calcularMetricas();
+    this.renderCharts();
+  }
 
-    this.selectedUser = who;
-    this.modalErrorAct = null;
+  // ====== MÉTRICAS ======
+  private calcularMetricas(): void {
+    const activas = this.iniciativas.filter(it => this.isActiva(it.estado_iniciativa));
+    const activeIds = new Set(activas.map(x => x.id_iniciativa));
+    const actsValid = (this.actividades || []).filter(a => a.id_iniciativa && activeIds.has(Number(a.id_iniciativa)));
 
-    const today = new Date();
-    const toYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    // desde actividades (por iniciativa)
+    const semByInitActs = new Map<string, number>();
+    const mesByInitActs = new Map<string, number>();
+    for (const a of actsValid) {
+      const min = Number(a.carga_minutos) || 0;
+      const w = Math.round(min * this.weekFactor(a.periodicidad));
+      const m = Math.round(min * this.monthFactor(a.periodicidad));
+      const inicName = activas.find(x => x.id_iniciativa === a.id_iniciativa)?.nombre_iniciativa || `ID ${a.id_iniciativa}`;
+      semByInitActs.set(inicName, (semByInitActs.get(inicName) || 0) + w);
+      mesByInitActs.set(inicName, (mesByInitActs.get(inicName) || 0) + m);
+    }
+    const totalSemActs = Array.from(semByInitActs.values()).reduce((a, b) => a + b, 0);
+    const totalMesActs = Array.from(mesByInitActs.values()).reduce((a, b) => a + b, 0);
 
-    this.newAct = {
-      id_actividad: null,
-      fecha: toYMD(today),
-      nombre_actividad: '',
-      descripcion: '',
-      tipo_actividad: '',
-      periodicidad: 'Diaria',
-      carga_minutos: 0,
-      herramientas: '',
-      id_historia: null,
-      correo_electronico: String(who.correo_electronico),
-      correo_electronico_buckup: ''
-    };
+    const useActivities = totalSemActs > 0 || totalMesActs > 0;
 
-    this.herramientaSel = '';
+    const tipoAgg = new Map<string, number>();
+    const perAgg = new Map<string, number>();
+    const herrAgg = new Map<string, number>();
+    let paretoPairs: Array<{ nombre: string; minutos: number }> = [];
 
-    this.historiasOpts = [];
-    this.historiasLoading = true;
-    this.http.get<HistoriaLite[]>(`${BASE_URL}/historias_por_correo/${encodeURIComponent(who.correo_electronico)}`)
-      .pipe(finalize(() => { this.historiasLoading = false; this.cdr.detectChanges(); }))
-      .subscribe({
-        next: data => { this.historiasOpts = data || []; },
-        error: err => { console.error('Error cargando historias por correo:', err); this.historiasOpts = []; }
+    if (useActivities) {
+      this.totalMinutos = totalSemActs;
+      this.totalMinutosMensual = totalMesActs;
+
+      this.distSemLabels = [...semByInitActs.keys()];
+      this.distSemValues = this.distSemLabels.map(k => semByInitActs.get(k) || 0);
+      this.distMesLabels = [...mesByInitActs.keys()];
+      this.distMesValues = this.distMesLabels.map(k => mesByInitActs.get(k) || 0);
+
+      paretoPairs = this.distSemLabels.map((n, i) => ({ nombre: n, minutos: this.distSemValues[i] }))
+        .sort((a, b) => b.minutos - a.minutos);
+
+      for (const a of actsValid) {
+        const val = Math.round((Number(a.carga_minutos) || 0) * this.weekFactor(a.periodicidad));
+        const t = (a.tipo_actividad || 'Sin tipo').trim();
+        tipoAgg.set(t, (tipoAgg.get(t) || 0) + val);
+        const p = (a.periodicidad || '—').trim();
+        perAgg.set(p, (perAgg.get(p) || 0) + val);
+        const tools = (a.herramientas || '').split(/[,;|/]/).map(x => x.trim()).filter(Boolean);
+        if (tools.length === 0) herrAgg.set('Sin especificar', (herrAgg.get('Sin especificar') || 0) + val);
+        else for (const h of tools) herrAgg.set(h, (herrAgg.get(h) || 0) + val);
+      }
+
+      // Score para top candidatos
+      const score = (it: Iniciativa): number => {
+        const freqWeight = (s: string): number => {
+          const v = (s || '').toLowerCase();
+          const map: Record<string, number> = {
+            'diaria': 1.0, 'diario': 1.0, 'semanal': 0.85, 'weekly': 0.85,
+            'quincenal': 0.75, 'mensual': 0.65, 'bimestral': 0.55,
+            'trimestral': 0.5, 'semestral': 0.45, 'anual': 0.35,
+            'ad-hoc': 0.3, 'puntual': 0.3, 'eventual': 0.3
+          };
+          return map[v] ?? 0.6;
+        };
+        const tipoWeight = (s: string): number => {
+          const v = (s || '').toLowerCase();
+          if (/(reporte|consolidaci|validaci|carga|env[ií]o|etl|extract|transform|load)/.test(v)) return 1.0;
+          if (/(soporte|operaci|seguimiento|monitoreo)/.test(v)) return 0.8;
+          if (/(sql|excel)/.test(v)) return 0.85;
+          if (/(desarrollo|proyecto|diseño|model)/.test(v)) return 0.5;
+          if (/(an[aá]lisi)/.test(v)) return 0.45;
+          return 0.6;
+        };
+        const herramientaWeight = (s: string | undefined): number => {
+          const t = (s || '').toLowerCase();
+          const tokens = t.split(/[,;|/]/).map(x => x.trim()).filter(Boolean);
+          let w = 0.6;
+          for (const h of tokens) {
+            if (/excel|csv|outlook|correo|word/.test(h)) w = Math.max(w, 1.0);
+            else if (/sharepoint|forms|power\s*apps/.test(h)) w = Math.max(w, 0.7);
+            else if (/powerbi|bi/.test(h)) w = Math.max(w, 0.6);
+            else if (/sql|sql server|postgres|duckdb/.test(h)) w = Math.max(w, 0.8);
+            else if (/python|rpa|ui\s*path|automation/.test(h)) w = Math.max(w, 0.5);
+          }
+          return w;
+        };
+        const s = (freqWeight(it.periodicidad) * 0.5) + (tipoWeight(it.tipo_actividad) * 0.3) + (herramientaWeight(it.herramientas) * 0.2);
+        return Math.round(Math.min(1, s) * 100);
+      };
+
+      const mapInicByName = new Map(activas.map(x => [x.nombre_iniciativa || `ID ${x.id_iniciativa}`, x]));
+      const candidates = paretoPairs.map(p => {
+        const inic = mapInicByName.get(p.nombre);
+        const sc = inic ? score(inic) : 60;
+        return { nombre: p.nombre, minutos: p.minutos, score: sc, impacto: p.minutos * (sc / 100) };
+      }).sort((a, b) => b.impacto - a.impacto);
+      this.topCandidatos = candidates.slice(0, 5);
+
+      this.paretoLabels = paretoPairs.map(x => x.nombre);
+      this.paretoMinutos = paretoPairs.map(x => x.minutos);
+      this.tipoLabels = [...tipoAgg.keys()];
+      this.tipoMinutos = this.tipoLabels.map(k => tipoAgg.get(k) || 0);
+      this.perLabels = [...perAgg.keys()];
+      this.perMinutos = this.perLabels.map(k => perAgg.get(k) || 0);
+      this.herrLabels = [...herrAgg.keys()];
+      this.herrMinutos = this.herrLabels.map(k => herrAgg.get(k) || 0);
+
+    } else {
+      // Fallback con iniciativas
+      const semanalByInit = activas.map(it => ({
+        nombre: it.nombre_iniciativa || `ID ${it.id_iniciativa}`,
+        minutos: Math.round((Number(it.carga_minutos) || 0) * this.weekFactor(it.periodicidad))
+      }));
+      const mensualByInitPairs = activas.map(it => ({
+        nombre: it.nombre_iniciativa || `ID ${it.id_iniciativa}`,
+        minutos: Math.round((Number(it.carga_minutos) || 0) * this.monthFactor(it.periodicidad))
+      }));
+
+      this.totalMinutos = semanalByInit.reduce((a, x) => a + x.minutos, 0);
+      this.totalMinutosMensual = mensualByInitPairs.reduce((a, x) => a + x.minutos, 0);
+
+      this.distSemLabels = semanalByInit.map(x => x.nombre);
+      this.distSemValues = semanalByInit.map(x => x.minutos);
+      this.distMesLabels = mensualByInitPairs.map(x => x.nombre);
+      this.distMesValues = mensualByInitPairs.map(x => x.minutos);
+
+      const paretoPairs = [...semanalByInit].sort((a, b) => b.minutos - a.minutos);
+
+      const tipoAgg = new Map<string, number>();
+      const perAgg  = new Map<string, number>();
+      const herrAgg = new Map<string, number>();
+      for (const it of activas) {
+        const val = Math.round((Number(it.carga_minutos) || 0) * this.weekFactor(it.periodicidad));
+        const t = (it.tipo_actividad || 'Sin tipo').trim();
+        tipoAgg.set(t, (tipoAgg.get(t) || 0) + val);
+        const p = (it.periodicidad || '—').trim();
+        perAgg.set(p, (perAgg.get(p) || 0) + val);
+        const tools = (it.herramientas || '').split(/[,;|/]/).map(x => x.trim()).filter(Boolean);
+        if (tools.length === 0) herrAgg.set('Sin especificar', (herrAgg.get('Sin especificar') || 0) + val);
+        else for (const h of tools) herrAgg.set(h, (herrAgg.get(h) || 0) + val);
+      }
+
+      const score = (it: Iniciativa): number => {
+        const v = (it.periodicidad || '').toLowerCase();
+        const map: Record<string, number> = {
+          'diaria': 1.0, 'diario': 1.0, 'semanal': 0.85, 'weekly': 0.85,
+          'quincenal': 0.75, 'mensual': 0.65, 'bimestral': 0.55,
+          'trimestral': 0.5, 'semestral': 0.45, 'anual': 0.35,
+          'ad-hoc': 0.3, 'puntual': 0.3, 'eventual': 0.3
+        };
+        const freq = map[v] ?? 0.6;
+        const t = (it.tipo_actividad || '').toLowerCase();
+        let tipo = 0.6;
+        if (/(reporte|consolidaci|validaci|carga|env[ií]o|etl|extract|transform|load)/.test(t)) tipo = 1.0;
+        else if (/(soporte|operaci|seguimiento|monitoreo)/.test(t)) tipo = 0.8;
+        else if (/(sql|excel)/.test(t)) tipo = 0.85;
+        else if (/(desarrollo|proyecto|diseño|model)/.test(t)) tipo = 0.5;
+        else if (/(an[aá]lisi)/.test(t)) tipo = 0.45;
+
+        const tools = (it.herramientas || '').toLowerCase();
+        let her = 0.6;
+        if (/excel|csv|outlook|correo|word/.test(tools)) her = 1.0;
+        else if (/sharepoint|forms|power\s*apps/.test(tools)) her = 0.7;
+        else if (/powerbi|bi/.test(tools)) her = 0.6;
+        else if (/sql|sql server|postgres|duckdb/.test(tools)) her = 0.8;
+        else if (/python|rpa|ui\s*path|automation/.test(tools)) her = 0.5;
+
+        const s = (freq * 0.5) + (tipo * 0.3) + (her * 0.2);
+        return Math.round(Math.min(1, s) * 100);
+      };
+
+      const candidates = activas.map(it => {
+        const minutos = Math.round((Number(it.carga_minutos) || 0) * this.weekFactor(it.periodicidad));
+        const sc = score(it);
+        return { nombre: it.nombre_iniciativa || `ID ${it.id_iniciativa}`, minutos, score: sc, impacto: minutos * (sc / 100) };
+      }).sort((a, b) => b.impacto - a.impacto);
+      this.topCandidatos = candidates.slice(0, 5);
+
+      this.paretoLabels = candidates.map(x => x.nombre);
+      this.paretoMinutos = candidates.map(x => x.minutos);
+      this.tipoLabels = [...tipoAgg.keys()];
+      this.tipoMinutos = this.tipoLabels.map(k => tipoAgg.get(k) || 0);
+      this.perLabels = [...perAgg.keys()];
+      this.perMinutos = this.perLabels.map(k => perAgg.get(k) || 0);
+      this.herrLabels = [...herrAgg.keys()];
+      this.herrMinutos = this.herrLabels.map(k => herrAgg.get(k) || 0);
+    }
+  }
+
+  // ====== CANVAS helpers ======
+  /** Toma el canvas por id, lo ajusta al tamaño del wrapper .cg-box y devuelve el contexto 2D */
+  private prepareCanvas(id: string): CanvasRenderingContext2D | null {
+    const el = document.getElementById(id) as HTMLCanvasElement | null;
+    if (!el) return null;
+    const box = el.parentElement as HTMLElement | null;
+    const w = Math.max(200, box?.clientWidth ?? 200);
+    const h = Math.max(150, box?.clientHeight ?? 150);
+    el.width = w;
+    el.height = h;
+    // estilos redundantes (los CSS ya lo fuerzan, esto asegura el drawing buffer)
+    el.style.width = `${w}px`;
+    el.style.height = `${h}px`;
+    return el.getContext('2d');
+  }
+
+  // ====== RENDER ======
+  private destroyCharts(): void {
+    Object.values(this.chartRefs).forEach(ch => { try { ch?.destroy(); } catch { } });
+    this.chartRefs = {};
+  }
+
+  private renderCharts(): void {
+    if (!this.ChartLib) return;
+    this.destroyCharts();
+
+    const C = this.ChartLib;
+    const P = this.PALETTE;
+
+    // Donut SEM
+    const ctxSem = this.prepareCanvas('cgChartDistSem');
+    if (ctxSem) {
+      this.chartRefs['distSem'] = new C(ctxSem, {
+        type: 'doughnut',
+        data: { labels: this.distSemLabels, datasets: [{ data: this.distSemValues, backgroundColor: this.colorList(this.distSemLabels.length), borderWidth: 0 }] },
+        options: { responsive: false, maintainAspectRatio: false, animation: false, cutout: '58%', plugins: { legend: { position: 'bottom' } } }
       });
-
-    this.isNewActModalOpen = true;
-    this.cdr.detectChanges();
-  }
-
-  public closeNewActModal() {
-    this.isNewActModalOpen = false;
-    this.isSavingAct = false;
-    this.newAct = null;
-    this.herramientaSel = '';
-    this.historiasOpts = [];
-    this.cdr.detectChanges();
-  }
-
-  public onNewActBackdropClick(ev: MouseEvent) { if (ev.target === ev.currentTarget) this.closeNewActModal(); }
-
-  public submitNewAct(): void {
-    if (!this.newAct) return;
-
-    const requiredFilled =
-      this.newAct.fecha && this.newAct.nombre_actividad && this.newAct.tipo_actividad &&
-      this.newAct.periodicidad && (this.newAct.carga_minutos ?? 0) >= 0 && this.newAct.correo_electronico;
-
-    if (!requiredFilled) {
-      this.modalErrorAct = 'Por favor completa los campos obligatorios (*).';
-      return;
     }
 
-    this.newAct.herramientas = this.herramientaSel || '';
+    // Donut MES
+    const ctxMes = this.prepareCanvas('cgChartDistMes');
+    if (ctxMes) {
+      this.chartRefs['distMes'] = new C(ctxMes, {
+        type: 'doughnut',
+        data: { labels: this.distMesLabels, datasets: [{ data: this.distMesValues, backgroundColor: this.colorList(this.distMesLabels.length), borderWidth: 0 }] },
+        options: { responsive: false, maintainAspectRatio: false, animation: false, cutout: '58%', plugins: { legend: { position: 'bottom' } } }
+      });
+    }
 
-    this.isSavingAct = true;
-    this.modalErrorAct = null;
+    // Pareto
+    const ctxPareto = this.prepareCanvas('cgChartPareto');
+    if (ctxPareto) {
+      const labelsFull = this.paretoLabels;
+      const thresh = this.thresholdMinutos;
+      const maxMinutes = Math.max(thresh, ...(this.paretoMinutos.length ? this.paretoMinutos : [0]));
 
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-
-    this.http.post(`${BASE_URL}/actividades_diarias`, this.newAct, { headers })
-      .pipe(finalize(() => { this.isSavingAct = false; this.cdr.detectChanges(); }))
-      .subscribe({
-        next: () => {
-          const correo = this.newAct!.correo_electronico;
-          this.closeNewActModal();
-          if (correo) this.loadActividadesFor(correo);
+      this.chartRefs['pareto'] = new C(ctxPareto, {
+        type: 'bar',
+        data: {
+          labels: this.paretoLabels,
+          datasets: [
+            { type: 'bar', label: 'Min/sem', data: this.paretoMinutos, backgroundColor: P.teal, borderColor: P.tealDark, borderWidth: 1, maxBarThickness: 26, categoryPercentage: 0.8, barPercentage: 0.9 },
+            { type: 'line', label: `Umbral ${this.thresholdHoras}h (${this.thresholdMinutos} min)`, data: this.paretoMinutos.map(() => this.thresholdMinutos), borderColor: P.amber, backgroundColor: P.amber, borderWidth: 2, pointRadius: 0, borderDash: [6, 4], yAxisID: 'y' }
+          ]
         },
-        error: (err) => {
-          console.error('Error creando actividad:', err);
-          this.modalErrorAct = (err?.error?.error) || 'No se pudo crear la actividad.';
+        options: {
+          responsive: false, maintainAspectRatio: false, animation: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 10 } },
+            tooltip: { mode: 'index', intersect: false, callbacks: { title: (items: any[]) => labelsFull[items[0].dataIndex] || '' } }
+          },
+          layout: { padding: { left: 4, right: 8, top: 4, bottom: 4 } },
+          scales: {
+            y: { beginAtZero: true, suggestedMax: Math.ceil(maxMinutes * 1.1), title: { display: true, text: 'Minutos por semana' } },
+            x: { ticks: { autoSkip: true, maxRotation: 0, minRotation: 0 } }
+          }
         }
       });
+    }
+
+    // Tipo
+    const ctxTipo = this.prepareCanvas('cgChartTipo');
+    if (ctxTipo) {
+      this.chartRefs['tipo'] = new C(ctxTipo, {
+        type: 'doughnut',
+        data: { labels: this.tipoLabels, datasets: [{ label: 'Min/sem', data: this.tipoMinutos, backgroundColor: this.colorList(this.tipoLabels.length), borderWidth: 0 }] },
+        options: { responsive: false, maintainAspectRatio: false, animation: false, cutout: '65%', plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+
+    // Periodicidad
+    const ctxPer = this.prepareCanvas('cgChartPer');
+    if (ctxPer) {
+      this.chartRefs['per'] = new C(ctxPer, {
+        type: 'bar',
+        data: { labels: this.perLabels, datasets: [{ label: 'Min/sem', data: this.perMinutos, backgroundColor: this.colorList(this.perLabels.length).map(c => c === this.PALETTE.amber ? '#FBBF24' : c), borderColor: this.PALETTE.tealDark, borderWidth: 1 }] },
+        options: { responsive: false, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+      });
+    }
+
+    // Herramientas
+    const ctxHerr = this.prepareCanvas('cgChartHerr');
+    if (ctxHerr) {
+      this.chartRefs['herr'] = new C(ctxHerr, {
+        type: 'bar',
+        data: { labels: this.herrLabels, datasets: [{ label: 'Min/sem', data: this.herrMinutos, backgroundColor: this.colorList(this.herrLabels.length), borderWidth: 0 }] },
+        options: { indexAxis: 'y', responsive: false, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+      });
+    }
   }
+
+  // Modales
+  mostrarModalColaborador = false;
+  abrirModalDetalles(): void { this.mostrarModalColaborador = true; }
+  cerrarModalDetalles(): void { this.mostrarModalColaborador = false; }
+  abrirModalNuevaIniciativa(): void { console.log('Abrir modal nueva iniciativa'); }
 }

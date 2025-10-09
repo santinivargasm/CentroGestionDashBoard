@@ -1,452 +1,234 @@
-<!-- dashboard.html -->
+<!--  Reglas locales para que NADA sobreescriba el tamaño del canvas -->
+<style>
+  .cg-box { position: relative; overflow: hidden; width: 100%; }
+  .cg-box > canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+  }
+  /* Evita que flex/grid “estire” las tarjetas por contenido interno */
+  .cg-card { min-height: 0; }
+</style>
 
-<div class="rounded-md shadow-md p-10 mb-4 bg-gradient-to-br from-[#ffffff] to-[#008f8f]">
-  <h2 class="text-xl font-bold text-black">Proyectos CHAPTERS</h2>
-  <div class="flex justify-center p-4">
-    <div class="w-full">
-      <div class="overflow-x-auto -mx-4 md:mx-0">
-        <table class="min-w-[1200px] md:min-w-full w-full table-auto border border-gray-300 rounded-lg shadow-md overflow-hidden">
-          <thead>
-            <tr class="bg-[#00a1a1] text-white text-center">
-              <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm lg:text-base font-medium whitespace-nowrap">ID</th>
-              <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm lg:text-base font-medium whitespace-nowrap">Nombre</th>
-              <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm lg:text-base font-medium whitespace-nowrap">Apellido</th>
-              <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm lg:text-base font-medium whitespace-nowrap">Email</th>
-              <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm lg:text-base font-medium whitespace-nowrap">Área</th>
-              <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm lg:text-base font-medium whitespace-nowrap">Detalles</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (item of userList; track $index) {
-              <tr class="text-center">
-                <td class="border-b border-l border-gray-300 bg-[#F3F6FF] px-2 py-2 text-xs md:px-4 md:py-3 md:text-base font-medium text-gray-700 whitespace-nowrap">
-                  {{ item.id_empleado }}
-                </td>
-                <td class="border-b border-l border-gray-300 bg-[#F3F6FF] px-2 py-2 text-xs md:px-4 md:py-3 md:text-base font-medium text-gray-700">
-                  {{ item.nombre }}
-                </td>
-                <td class="border-b border-gray-300 bg-white px-2 py-2 text-xs md:px-4 md:py-3 md:text-base font-medium text-gray-700">
-                  {{ item.apellido }}
-                </td>
-                <td class="border-b border-gray-300 bg-white px-2 py-2 text-xs md:px-4 md:py-3 md:text-base font-medium text-gray-700 whitespace-nowrap">
-                  {{ item.correo_electronico }}
-                </td>
-                <td class="border-b border-l border-gray-300 bg-[#F3F6FF] px-2 py-2 text-xs md:px-4 md:py-3 md:text-base font-medium text-gray-700">
-                  {{ item.departamento }}
-                </td>
-                <td class="border-b border-r border-gray-300 bg-[#F3F6FF] px-2 py-2 md:px-4 md:py-3">
-                  <button
-                    class="inline-block rounded-md border border-[#00a1a1] px-4 py-2 text-xs md:text-sm font-medium text-[#00a1a1] hover:bg-[#00a1a1] hover:text-white transition-all duration-300 ease-in-out"
-                    (click)="verDetalle(item)">
-                    Ver
-                  </button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+<div class="rounded-md shadow-md p-4 sm:p-6 lg:p-10 mb-4 bg-gradient-to-br from-[#ffffff] to-[#008f8f] overflow-x-hidden">
+  <div class="p-6">
+
+    <!-- Cambiar correo (ACTOR) + NUEVO: Ver (VIEWER) -->
+    <div class="flex flex-col sm:flex-row sm:justify-end gap-2 items-stretch sm:items-center mb-2">
+      <ng-container *ngIf="subordinados.length > 0">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
+          <label class="text-xs text-gray-700">Ver:</label>
+          <select
+            class="px-2 py-2 border rounded-lg text-sm w-full sm:w-auto max-w-full"
+            [ngModel]="viewerCorreo"
+            (ngModelChange)="onChangeViewer($event)"
+          >
+            <option *ngFor="let s of subordinados" [ngValue]="s.correo_electronico">
+              {{ s.nombre }} • {{ s.correo_electronico }}
+            </option>
+          </select>
+        </div>
+      </ng-container>
+
+      <button
+        (click)="abrirSelectorCorreo()"
+        class="px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white hover:bg-gray-50 w-full sm:w-auto"
+      >
+        Cambiar correo
+      </button>
+    </div>
+
+    <!-- Datos del colaborador (VIEWER) -->
+    <div class="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <h2 class="text-xl font-semibold text-gray-800">Datos del colaborador</h2>
+        <button
+          (click)="abrirModalDetalles()"
+          class="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg shadow hover:bg-teal-700 active:scale-[0.98] transition w-full sm:w-auto"
+        >
+          Detalles
+        </button>
+      </div>
+
+      <!-- ojo con truncate: agrega min-w-0 para que funcione en móvil -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-10 text-sm text-gray-700">
+        <p class="flex items-center min-w-0">
+          <span class="font-semibold w-28 sm:w-36">Nombre:</span>
+          <span class="truncate">{{ colaborador?.nombre || '—' }}</span>
+        </p>
+        <p class="flex items-center min-w-0">
+          <span class="font-semibold w-28 sm:w-36">Correo:</span>
+          <span class="truncate">{{ colaborador?.correo_electronico || '—' }}</span>
+        </p>
       </div>
     </div>
-  </div>
-</div>
 
+    <!-- Análisis de iniciativas (VIEWER) -->
+    <div class="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-6">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Análisis de iniciativas</h2>
 
+      <!-- 12 columnas en ≥sm; 1 columna en móvil -->
+      <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
 
-<!-- cards superiores -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
+        <!-- Donut % por actividad (SEMANA) -->
+        <div class="col-span-1 sm:col-span-12 md:col-span-4">
+          <div class="rounded-xl border border-gray-200 p-3 cg-card">
+            <p class="font-semibold text-sm mb-2">Distribución por iniciativa (min/sem)</p>
+            <div class="cg-box h-[180px]">
+              <canvas id="cgChartDistSem"></canvas>
+            </div>
+          </div>
+        </div>
 
-  <!-- ============ MODAL (XXXL) ============ -->
-  <div *ngIf="isModalOpen" class="fixed inset-0 z-[9999] animate-[fadeIn_.2s_ease-out]">
-    <!-- Fondo -->
-    <div class="absolute inset-0 bg-black/50 backdrop-blur-[1px]" (click)="onBackdropClick($event)"></div>
+        <!-- Donut % por actividad (MES) -->
+        <div class="col-span-1 sm:col-span-12 md:col-span-4">
+          <div class="rounded-xl border border-gray-200 p-3 cg-card">
+            <p class="font-semibold text-sm mb-2">Distribución por iniciativa (min/mes)</p>
+            <div class="cg-box h-[180px]">
+              <canvas id="cgChartDistMes"></canvas>
+            </div>
+          </div>
+        </div>
 
-    <!-- Contenido -->
-    <div
-      class="relative mx-auto w-[99vw] max-w-[2200px] max-h-[98vh] top-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 border border-gray-200 overflow-hidden"
-      role="dialog" aria-modal="true" aria-labelledby="userDetailTitle">
-      <!-- Cerrar -->
-      <button (click)="closeModal()"
-        class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl leading-none"
-        aria-label="Cerrar modal">
-        &times;
-      </button>
+        <!-- Pareto -->
+        <div class="col-span-1 sm:col-span-12 md:col-span-4">
+          <div class="rounded-xl border border-gray-200 p-3 cg-card">
+            <p class="font-semibold text-sm mb-2">Pareto por iniciativa (min/sem) • Umbral 44h</p>
+            <div class="cg-box h-[320px]">
+              <canvas id="cgChartPareto"></canvas>
+            </div>
+          </div>
+        </div>
 
-      <h3 id="userDetailTitle" class="text-2xl font-bold text-gray-900 mb-4">Detalle del Usuario</h3>
+        <!-- Por tipo -->
+        <div class="col-span-1 sm:col-span-12 md:col-span-4">
+          <div class="rounded-xl border border-gray-200 p-3 cg-card">
+            <p class="font-semibold text-sm mb-2">Por tipo de actividad</p>
+            <div class="cg-box h-[220px]">
+              <canvas id="cgChartTipo"></canvas>
+            </div>
+          </div>
+        </div>
 
-      <!-- Loader -->
-      <div *ngIf="isLoadingDetail" class="flex items-center gap-3 text-gray-700">
-        <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-        </svg>
-        Cargando...
-      </div>
+        <!-- Por periodicidad -->
+        <div class="col-span-1 sm:col-span-12 md:col-span-4">
+          <div class="rounded-xl border border-gray-200 p-3 cg-card">
+            <p class="font-semibold text-sm mb-2">Por periodicidad</p>
+            <div class="cg-box h-[220px]">
+              <canvas id="cgChartPer"></canvas>
+            </div>
+          </div>
+        </div>
 
-      <!-- Contenido scrolleable -->
-      <ng-container *ngIf="!isLoadingDetail">
-        <ng-container *ngIf="detailVm as vm">
-          <div class="h-[calc(98vh-100px)] overflow-auto pr-2">
+        <!-- Herramientas (fila nueva) -->
+        <div class="col-span-1 sm:col-span-12">
+          <div class="rounded-xl border border-gray-200 p-3 cg-card">
+            <p class="font-semibold text-sm mb-2">Uso por herramienta (min/sem)</p>
+            <div class="cg-box h-[240px]">
+              <canvas id="cgChartHerr"></canvas>
+            </div>
+          </div>
+        </div>
 
-            <!-- ===== Datos del colaborador (colapsable) ===== -->
-            <div class="mb-6 max-h-[38vh] overflow-auto">
-              <div class="flex items-center justify-between mb-2">
-                <h4 class="text-lg font-semibold text-gray-800">Datos del colaborador</h4>
-                <button type="button"
-                        class="inline-flex items-center rounded-md border border-[#00a1a1] bg-[#00a1a1] px-3 py-1.5 text-sm font-medium text-white hover:bg-white hover:text-[#00a1a1] transition-all"
-                        (click)="toggleUserDetails()">
-                  {{ showFullDetails ? 'Ocultar detalles' : 'Ver detalles' }}
-                </button>
-              </div>
-
-              <table class="min-w-full border border-gray-300 rounded-md overflow-hidden">
-                <thead class="bg-gray-100">
+        <!-- Top candidatos -->
+        <div class="col-span-1 sm:col-span-12">
+          <div class="rounded-xl border border-gray-200 p-4">
+            <p class="font-semibold text-sm mb-3">Top candidatos para automatizar (impacto = min/sem × score)</p>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm text-left text-gray-700">
+                <thead class="bg-gray-50 text-xs uppercase text-gray-600">
                   <tr>
-                    <th class="px-4 py-2 text-left text-gray-800 font-semibold border-b border-gray-300">Campo</th>
-                    <th class="px-4 py-2 text-left text-gray-800 font-semibold border-b border-gray-300">Valor</th>
+                    <th class="px-3 py-2">#</th>
+                    <th class="px-3 py-2">Iniciativa</th>
+                    <th class="px-3 py-2">Min/sem</th>
+                    <th class="px-3 py-2">Score (%)</th>
+                    <th class="px-3 py-2">Impacto</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200">
-                  <!-- Siempre visibles -->
-                  <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-2 text-gray-600">Nombre</td>
-                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.nombre }}</td>
+                <tbody>
+                  <tr *ngFor="let r of topCandidatos; let i = index" class="border-b">
+                    <td class="px-3 py-2">{{ i + 1 }}</td>
+                    <td class="px-3 py-2 font-medium">{{ r.nombre }}</td>
+                    <td class="px-3 py-2">{{ r.minutos }}</td>
+                    <td class="px-3 py-2">{{ r.score }}</td>
+                    <td class="px-3 py-2">{{ r.impacto | number:'1.0-0' }}</td>
                   </tr>
-                  <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-2 text-gray-600">Apellido</td>
-                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.apellido }}</td>
+                  <tr *ngIf="topCandidatos.length === 0">
+                    <td colspan="5" class="text-center py-3 text-gray-500">Sin datos suficientes.</td>
                   </tr>
-                  <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-2 text-gray-600">Correo Electrónico</td>
-                    <td class="px-4 py-2 text-gray-900">{{ vm.colaborador.correo_electronico }}</td>
-                  </tr>
-
-                  <!-- Detalles adicionales (colapsables) -->
-                  @if (showFullDetails) {
-                    <tr class="hover:bg-gray-50"><td class="px-4 py-2 text-gray-600">ID Empleado</td><td class="px-4 py-2 text-gray-900">{{ vm.colaborador.id_empleado }}</td></tr>
-                    <tr class="hover:bg-gray-50"><td class="px-4 py-2 text-gray-600">Fecha de Nacimiento</td><td class="px-4 py-2 text-gray-900">{{ vm.colaborador.fecha_nacimiento | date: 'dd/MM/yyyy' }}</td></tr>
-                    <tr class="hover:bg-gray-50"><td class="px-4 py-2 text-gray-600">Puesto</td><td class="px-4 py-2 text-gray-900">{{ vm.colaborador.puesto }}</td></tr>
-                    <tr class="hover:bg-gray-50"><td class="px-4 py-2 text-gray-600">Area</td><td class="px-4 py-2 text-gray-900">{{ vm.colaborador.departamento }}</td></tr>
-                    <tr class="hover:bg-gray-50"><td class="px-4 py-2 text-gray-600">Estado Chapter</td><td class="px-4 py-2 text-gray-900">{{ vm.colaborador.estado_chapter }}</td></tr>
-                    <tr class="hover:bg-gray-50"><td class="px-4 py-2 text-gray-600">Automatización</td><td class="px-4 py-2 text-gray-900">{{ vm.colaborador.automatizacion }}</td></tr>
-                    <tr class="hover:bg-gray-50"><td class="px-4 py-2 text-gray-600">Analítica Avanzada</td><td class="px-4 py-2 text-gray-900">{{ vm.colaborador.analitica_avanzada }}</td></tr>
-                    <tr class="hover:bg-gray-50"><td class="px-4 py-2 text-gray-600">Gerencia</td><td class="px-4 py-2 text-gray-900">{{ vm.colaborador.gerencia }}</td></tr>
-                    <tr class="hover:bg-gray-50"><td class="px-4 py-2 text-gray-600">Vicepresidencia</td><td class="px-4 py-2 text-gray-900">{{ vm.colaborador.vicepresidencia }}</td></tr>
-                    <tr class="hover:bg-gray-50"><td class="px-4 py-2 text-gray-600">Jefe Directo</td><td class="px-4 py-2 text-gray-900">{{ vm.colaborador.jefe_directo }}</td></tr>
-                  }
                 </tbody>
               </table>
             </div>
-
-            <!-- ===== Iniciativas ===== -->
-            <div class="max-h-[38vh] overflow-auto">
-              <div class="flex items-center justify-between mb-3">
-                <h4 class="text-xl font-semibold text-gray-800">Iniciativas del colaborador</h4>
-
-                <button type="button" (click)="openNewIniModal(vm.colaborador)"
-                  class="inline-block rounded-md border border-[#00a1a1] bg-[#00a1a1] px-4 py-2 text-sm font-medium text-white hover:bg-white hover:text-[#00a1a1] transition-all duration-300 ease-in-out">
-                  + Insertar nueva iniciativa
-                </button>
-              </div>
-
-              <ng-container *ngIf="vm.iniciativas?.length; else noIni">
-                <table class="min-w-full border border-gray-300 rounded-md overflow-hidden mt-4">
-                  <thead class="bg-teal-500 text-white font-bold">
-                    <tr>
-                      <th class="px-3 py-2 text-left border-b border-gray-300">ID</th>
-                      <th class="px-3 py-2 text-left border-b border-gray-300">Nombre iniciativa</th>
-                      <th class="px-3 py-2 text-left border-b border-gray-300">Descripción</th>
-                      <th class="px-3 py-2 text-left border-b border-gray-300">Avance</th>
-                      <th class="px-3 py-2 text-left border-b border-gray-300">Estado</th>
-                      <th class="px-3 py-2 text-left border-b border-gray-300">Prioridad</th>
-                      <th class="px-3 py-2 text-left border-b border-gray-300">Inicio</th>
-                      <th class="px-3 py-2 text-left border-b border-gray-300">Fin Est.</th>
-                      <th class="px-3 py-2 text-left border-b border-gray-300">Fin Real</th>
-                      <th class="px-3 py-2 text-center border-b border-gray-300">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-200">
-                    @for (ini of vm.iniciativas; track ini.id_iniciativa) {
-                      <tr class="hover:bg-teal-100 align-top">
-                        <td class="px-3 py-2 text-gray-800">{{ ini.id_iniciativa }}</td>
-                        <td class="px-3 py-2 text-gray-800">{{ ini.nombre_iniciativa }}</td>
-                        <td class="px-3 py-2 text-gray-600">{{ ini.descripcion }}</td>
-                        <td class="px-3 py-2 text-gray-800">{{ ini.avance }}%</td>
-                        <td class="px-3 py-2 text-gray-700">{{ ini.estado_id }}</td>
-                        <td class="px-3 py-2 text-gray-700">{{ ini.prioridad_id }}</td>
-                        <td class="px-3 py-2 text-gray-700">{{ ini.fecha_inicio | date: 'dd/MM/yyyy' }}</td>
-                        <td class="px-3 py-2 text-gray-700">{{ ini.fecha_fin_estimada | date: 'dd/MM/yyyy' }}</td>
-                        <td class="px-3 py-2 text-gray-700">{{ ini.fecha_fin_real | date: 'dd/MM/yyyy' }}</td>
-                        <td class="px-3 py-2 text-center">
-                          <button
-                            type="button"
-                            class="inline-block rounded-md border border-[#00a1a1] px-3 py-1 text-xs md:text-sm font-medium text-[#006d6d] hover:bg-[#00a1a1] hover:text-white transition-all"
-                            (click)="goToHistoryUser(ini)">
-                            Abrir
-                          </button>
-                        </td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </ng-container>
-
-              <ng-template #noIni>
-                <div class="text-gray-600 text-sm mt-2">No hay iniciativas registradas para este colaborador.</div>
-              </ng-template>
-            </div>
-
-            <!-- ===== Filtro por fecha para ACTIVIDADES ===== -->
-            <div class="mb-3 mt-6 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-              <div class="flex items-end gap-2">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700">Desde</label>
-                  <input
-                    type="date"
-                    name="dateFrom"
-                    class="mt-1 rounded-md border bg-white px-3 py-2"
-                    [(ngModel)]="dateFrom"
-                    (ngModelChange)="onDateInputsChanged()" />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700">Hasta</label>
-                  <input
-                    type="date"
-                    name="dateTo"
-                    class="mt-1 rounded-md border bg-white px-3 py-2"
-                    [(ngModel)]="dateTo"
-                    (ngModelChange)="onDateInputsChanged()" />
-                </div>
-                <button type="button"
-                        class="h-[38px] inline-flex items-center rounded-md border px-3 py-2 text-teal-700 border-teal-600 hover:bg-teal-50"
-                        (click)="onApplyDateFilter()">
-                  Aplicar
-                </button>
-              </div>
-
-              <!-- Presets rápidos -->
-              <div class="flex gap-2">
-                <button type="button" class="rounded-md bg-gray-100 px-3 py-2 hover:bg-gray-200" (click)="setDatePreset('hoy')">Hoy</button>
-                <button type="button" class="rounded-md bg-gray-100 px-3 py-2 hover:bg-gray-200" (click)="setDatePreset('7d')">Últimos 7 días</button>
-                <button type="button" class="rounded-md bg-gray-100 px-3 py-2 hover:bg-gray-200" (click)="setDatePreset('30d')">Últimos 30 días</button>
-                <button type="button" class="rounded-md bg-gray-100 px-3 py-2 hover:bg-gray-200" (click)="setDatePreset('todo')">Todo</button>
-              </div>
-            </div>
-
-            <!-- ===== Actividades (gráficos) ===== -->
-            <div>
-              <div class="flex items-center justify-between mb-3">
-                <div>
-                  <h4 class="text-xl font-semibold text-gray-800">
-                    Distribución de actividades ({{ vm.colaborador.correo_electronico }})
-                  </h4>
-                  <span class="text-sm text-gray-500">
-                    Total minutos: {{ totalMinutosActividades }}
-                  </span>
-                </div>
-
-                <!-- BOTÓN PARA ABRIR MODAL DE NUEVA ACTIVIDAD -->
-                <button type="button"
-                        class="inline-flex items-center rounded-md border border-[#00a1a1] bg-[#00a1a1] px-4 py-2 text-sm font-medium text-white hover:bg-white hover:text-[#00a1a1] transition-all"
-                        (click)="openNewActModal(vm.colaborador)">
-                  + Registrar actividad
-                </button>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                <div class="rounded-md border p-4">
-                  <h5 class="font-semibold mb-2">Pareto por actividad (min)</h5>
-                  <div class="h-64"><canvas #paretoCanvas></canvas></div>
-                </div>
-
-                <div class="rounded-md border p-4">
-                  <h5 class="font-semibold mb-2">Por tipo de actividad</h5>
-                  <div class="h-64"><canvas #pieTipoCanvas></canvas></div>
-                </div>
-
-                <div class="rounded-md border p-4">
-                  <h5 class="font-semibold mb-2">Por periodicidad</h5>
-                  <div class="h-64"><canvas #doughPeriodicidadCanvas></canvas></div>
-                </div>
-              </div>
-
-              <div *ngIf="!actividades.length" class="text-gray-600 text-sm mt-3">
-                No se encontraron actividades para este colaborador.
-              </div>
-            </div>
           </div>
-        </ng-container>
-
-        <div *ngIf="modalError" class="mt-4 text-red-600 text-sm">
-          {{ modalError }}
-        </div>
-      </ng-container>
-    </div>
-  </div>
-</div>
-
-<!-- ============ MODAL NUEVA INICIATIVA (secundario) ============ -->
-<div *ngIf="isNewIniModalOpen" class="fixed inset-0 z-[10050] animate-[fadeIn_.2s_ease-out]">
-  <div class="absolute inset-0 bg-black/60 backdrop-blur-[2px]" (click)="onNewIniBackdropClick($event)"></div>
-  <div
-    class="relative mx-auto w/[96vw] max-w-[1500px] max-h-[94vh] top-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 border border-gray-200 overflow-hidden"
-    role="dialog" aria-modal="true" aria-labelledby="newIniTitle">
-    <button (click)="closeNewIniModal()" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl leading-none" aria-label="Cerrar modal">&times;</button>
-    <h3 id="newIniTitle" class="text-2xl font-bold text-gray-900 mb-2">Nueva iniciativa</h3>
-    <p class="text-gray-500 mb-4">Colaborador: <span class="font-medium">{{ selectedUser?.nombre }} {{ selectedUser?.apellido }}</span></p>
-
-    <div class="h-[calc(94vh-130px)] overflow-auto pr-1">
-      <form #f="ngForm" (ngSubmit)="submitNewIni()" novalidate autocomplete="off">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div><label class="block text-sm font-medium text-gray-700">ID iniciativa</label><input type="number" name="id_iniciativa" [(ngModel)]="newIni!.id_iniciativa" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700">Nombre *</label><input type="text" name="nombre" [(ngModel)]="newIni!.nombre" required class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div class="md:col-span-3"><label class="block text-sm font-medium text-gray-700">Descripción *</label><textarea name="descripcion" [(ngModel)]="newIni!.descripcion" rows="3" required class="mt-1 w-full rounded-md border bg-white px-3 py-2"></textarea></div>
-
-          <div><label class="block text-sm font-medium text-gray-700">Fecha inicio</label><input type="date" name="fecha_inicio" [(ngModel)]="newIni!.fecha_inicio" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div><label class="block text-sm font-medium text-gray-700">Fecha fin estimada</label><input type="date" name="fecha_fin_estimada" [(ngModel)]="newIni!.fecha_fin_estimada" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div><label class="block text-sm font-medium text-gray-700">Fecha fin real</label><input type="date" name="fecha_fin_real" [(ngModel)]="newIni!.fecha_fin_real" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-
-          <div><label class="block text-sm font-medium text-gray-700">Estado ID</label><input type="number" name="estado_id" [(ngModel)]="newIni!.estado_id" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div><label class="block text-sm font-medium text-gray-700">Prioridad ID</label><input type="number" name="prioridad_id" [(ngModel)]="newIni!.prioridad_id" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div><label class="block text-sm font-medium text-gray-700">Tipo iniciativa ID</label><input type="number" name="tipo_iniciativa_id" [(ngModel)]="newIni!.tipo_iniciativa_id" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div><label class="block text-sm font-medium text-gray-700">Bucket ID</label><input type="number" name="bucket_id" [(ngModel)]="newIni!.bucket_id" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div><label class="block text-sm font-medium text-gray-700">Sprint ID</label><input type="number" name="sprint_id" [(ngModel)]="newIni!.sprint_id" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div><label class="block text-sm font-medium text-gray-700">Talla ID</label><input type="number" name="talla_id" [(ngModel)]="newIni!.talla_id" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div><label class="block text-sm font-medium text-gray-700">Tipo elemento ID</label><input type="number" name="tipo_elemento_id" [(ngModel)]="newIni!.tipo_elemento_id" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-
-          <div><label class="block text-sm font-medium text-gray-700">Avance (%)</label><input type="number" name="avance" [(ngModel)]="newIni!.avance" min="0" max="100" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700">Comentario</label><input type="text" name="comentario" [(ngModel)]="newIni!.comentario" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div class="md:col-span-3"><label class="block text-sm font-medium text-gray-700">Ruta de acceso</label><input type="text" name="ruta_acceso" [(ngModel)]="newIni!.ruta_acceso" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div><label class="block text-sm font-medium text-gray-700">Proyecto ID</label><input type="number" name="id_proyecto" [(ngModel)]="newIni!.id_proyecto" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-
-          <div><label class="block text-sm font-medium text-gray-700">ID empleado *</label><input type="text" name="id_empleado" [(ngModel)]="newIni!.id_empleado" required class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div><label class="block text-sm font-medium text-gray-700">Correo electrónico *</label><input type="email" name="correo_electronico" [(ngModel)]="newIni!.correo_electronico" required class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
-          <div><label class="block text-sm font-medium text-gray-700">ID modificador</label><input type="text" name="id_modificador" [(ngModel)]="newIni!.id_modificador" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/></div>
         </div>
 
-        <div class="mt-5 flex gap-2">
-          <button type="submit" [disabled]="isSaving || !f.form.valid" class="inline-flex items-center rounded-md bg-teal-600 px-4 py-2 text-white hover:bg-teal-700 disabled:opacity-50">
-            {{ isSaving ? 'Guardando...' : 'Guardar' }}
-          </button>
-          <button type="button" (click)="closeNewIniModal()" [disabled]="isSaving" class="inline-flex items-center rounded-md border px-4 py-2 text-teal-700 border-teal-600 hover:bg-teal-50">
-            Cancelar
-          </button>
-        </div>
-      </form>
-
-      <div *ngIf="modalError" class="mt-4 text-red-600 text-sm">
-        {{ modalError }}
       </div>
     </div>
-  </div>
-</div>
 
-<!-- ============ MODAL NUEVA ACTIVIDAD (secundario) ============ -->
-<div *ngIf="isNewActModalOpen" class="fixed inset-0 z-[10060] animate-[fadeIn_.2s_ease-out]">
-  <div class="absolute inset-0 bg-black/60 backdrop-blur-[2px]" (click)="onNewActBackdropClick($event)"></div>
-  <div
-    class="relative mx-auto w-[96vw] max-w-[1500px] max-h-[94vh] top-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 border border-gray-200 overflow-hidden"
-    role="dialog" aria-modal="true" aria-labelledby="newActTitle">
-    <button (click)="closeNewActModal()" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl leading-none" aria-label="Cerrar modal">&times;</button>
-    <h3 id="newActTitle" class="text-2xl font-bold text-gray-900 mb-2">Registrar actividad</h3>
-    <p class="text-gray-500 mb-4">Colaborador: <span class="font-medium">{{ selectedUser?.nombre }} {{ selectedUser?.apellido }}</span></p>
+    <!-- Modal seleccionar correo (ACTOR) -->
+    <div *ngIf="mostrarSelectorCorreo" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-[520px] p-6">
+        <h3 class="text-lg font-semibold mb-4">Selecciona el colaborador</h3>
 
-    <div class="h-[calc(94vh-130px)] overflow-auto pr-1">
-      <form #fa="ngForm" (ngSubmit)="submitNewAct()" novalidate autocomplete="off">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label class="block text-sm font-medium text-gray-700">ID actividad</label>
-            <input type="number" name="id_actividad" [(ngModel)]="newAct!.id_actividad" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/>
-          </div>
+        <label class="block text-sm mb-2">Correo del colaborador / jefe</label>
+        <select
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          [(ngModel)]="correoSeleccionado"
+        >
+          <option value="" disabled>— Selecciona —</option>
+          <!-- 👉 ahora vienen colaboradores y jefes -->
+          <option *ngFor="let c of opcionesColaborador" [value]="c.correo">
+            {{ c.etiqueta ? (c.etiqueta + ' • ' + c.correo) : c.correo }} ({{ c.rol }})
+          </option>
+        </select>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Fecha *</label>
-            <input type="date" name="fecha" [(ngModel)]="newAct!.fecha" required class="mt-1 w-full rounded-md border bg-white px-3 py-2"/>
-          </div>
-
-          <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700">Nombre actividad *</label>
-            <input type="text" name="nombre_actividad" [(ngModel)]="newAct!.nombre_actividad" required class="mt-1 w-full rounded-md border bg-white px-3 py-2"/>
-          </div>
-
-          <div class="md:col-span-3">
-            <label class="block text-sm font-medium text-gray-700">Descripción</label>
-            <textarea name="descripcion" [(ngModel)]="newAct!.descripcion" rows="3" class="mt-1 w-full rounded-md border bg-white px-3 py-2"></textarea>
-          </div>
-
-          <!-- Tipo de actividad (SELECT simple) -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Tipo actividad *</label>
-            <select name="tipo_actividad" [(ngModel)]="newAct!.tipo_actividad" required class="mt-1 w-full rounded-md border bg-white px-3 py-2">
-              <option [ngValue]="''">— Selecciona —</option>
-              <option *ngFor="let opt of TIPOS_OPTS | slice:1" [ngValue]="opt">{{ opt }}</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Periodicidad *</label>
-            <select name="periodicidad" [(ngModel)]="newAct!.periodicidad" required class="mt-1 w-full rounded-md border bg-white px-3 py-2">
-              <option value="" disabled>Selecciona...</option>
-              <option>Diaria</option>
-              <option>Semanal</option>
-              <option>Mensual</option>
-              <option>Ad-hoc</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Carga (min) *</label>
-            <input type="number" name="carga_minutos" [(ngModel)]="newAct!.carga_minutos" min="0" required class="mt-1 w-full rounded-md border bg-white px-3 py-2"/>
-          </div>
-
-          <!-- Herramientas (SELECT simple) -->
-          <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700">Herramientas</label>
-            <select class="mt-1 w-full rounded-md border bg-white px-3 py-2"
-                    name="herramientaSel"
-                    [(ngModel)]="herramientaSel">
-              <option [ngValue]="''">— Selecciona —</option>
-              <option *ngFor="let h of HERRAMIENTAS_OPTS | slice:1" [ngValue]="h">{{ h }}</option>
-            </select>
-            <p class="text-xs text-gray-500 mt-1">Seleccionada: {{ herramientaSel || 'Ninguna' }}</p>
-          </div>
-
-          <!-- ID historia (SELECT dinámico) -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700">ID historia</label>
-            <select name="id_historia" [(ngModel)]="newAct!.id_historia" class="mt-1 w-full rounded-md border bg-white px-3 py-2">
-              <option [ngValue]="null">— Selecciona —</option>
-              <option *ngFor="let h of historiasOpts" [ngValue]="h.id_historia">
-                {{ h.id_historia }} — {{ h.nombre_historia }}
-              </option>
-            </select>
-            <p class="text-xs text-gray-500 mt-1" *ngIf="historiasLoading">Cargando historias…</p>
-            <p class="text-xs text-gray-500 mt-1" *ngIf="!historiasLoading && historiasOpts.length === 0">No hay historias asignadas a este responsable.</p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Correo titular *</label>
-            <input type="email" name="correo_electronico" [(ngModel)]="newAct!.correo_electronico" required class="mt-1 w-full rounded-md border bg-white px-3 py-2"/>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Correo backup</label>
-            <input type="email" name="correo_electronico_buckup" [(ngModel)]="newAct!.correo_electronico_buckup" class="mt-1 w-full rounded-md border bg-white px-3 py-2"/>
-          </div>
-        </div>
-
-        <div class="mt-5 flex gap-2">
-          <button type="submit" [disabled]="isSavingAct || !fa.form.valid" class="inline-flex items-center rounded-md bg-teal-600 px-4 py-2 text-white hover:bg-teal-700 disabled:opacity-50">
-            {{ isSavingAct ? 'Guardando...' : 'Guardar' }}
-          </button>
-          <button type="button" (click)="closeNewActModal()" [disabled]="isSavingAct" class="inline-flex items-center rounded-md border px-4 py-2 text-teal-700 border-teal-600 hover:bg-teal-50">
+        <div class="mt-5 flex justify-end gap-2">
+          <button (click)="cancelarSelector()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50">
             Cancelar
           </button>
+          <button
+            (click)="confirmarSelector()"
+            class="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-700"
+            [disabled]="!correoSeleccionado"
+          >
+            Confirmar
+          </button>
         </div>
-      </form>
-
-      <div *ngIf="modalErrorAct" class="mt-4 text-red-600 text-sm">
-        {{ modalErrorAct }}
       </div>
     </div>
+
+    <!-- Modal detalles colaborador (VIEWER) -->
+    <div *ngIf="mostrarModalColaborador" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div class="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-[90vw] sm:w-[480px] max-h-[90vh] flex flex-col justify-between">
+        <div class="mb-3 text-center sm:text-left">
+          <h3 class="text-base sm:text-lg font-semibold mb-2">Detalles del colaborador</h3>
+        </div>
+
+        <div class="text-sm space-y-1 leading-tight">
+          <p><strong>Nombre:</strong> {{ colaborador?.nombre }}</p>
+          <p class="break-all"><strong>Correo:</strong> {{ colaborador?.correo_electronico }}</p>
+          <p><strong>Celular:</strong> {{ colaborador?.celular }}</p>
+          <p><strong>Vicepresidencia:</strong> {{ colaborador?.vicepresidencia }}</p>
+          <p><strong>Gerencia:</strong> {{ colaborador?.gerencia }}</p>
+          <p><strong>Dirección / Área:</strong> {{ colaborador?.direccion_area }}</p>
+          <p><strong>Jefe inmediato:</strong> {{ colaborador?.nombre_jefe_inmediato }}</p>
+          <p class="break-all"><strong>Correo Jefe inmediato:</strong> {{ colaborador?.correo_jefe_inmediato }}</p>
+          <p><strong>Jefe inmediato 2:</strong> {{ colaborador?.nombre_jefe_inmediato_2 }}</p>
+          <p class="break-all"><strong>Correo Jefe inmediato 2:</strong> {{ colaborador?.correo_jefe_inmediato_2 }}</p>
+        </div>
+
+        <div class="mt-5 text-center sm:text-right">
+          <button
+            (click)="cerrarModalDetalles()"
+            class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm font-medium w-full sm:w-auto"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>

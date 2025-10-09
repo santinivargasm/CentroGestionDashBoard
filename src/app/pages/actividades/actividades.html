@@ -1,0 +1,358 @@
+<!-- 🔒 Utilidades locales (no tocan colores) -->
+<style>
+  /* Evita que flex/grid “estire” tarjetas internas si en el futuro agregas gráficos */
+  .cg-card { min-height: 0; }
+</style>
+
+<div class="rounded-md shadow-md p-4 sm:p-6 lg:p-10 mb-4 bg-gradient-to-br from-[#ffffff] to-[#008f8f]">
+
+  <div class="p-4 sm:p-6">
+
+    <!-- Barra superior: cambiar correo + Ver -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-3">
+      <button type="button" (click)="cambiarCorreo()"
+        class="px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white hover:bg-gray-50 w-full sm:w-auto">
+        Cambiar correo
+      </button>
+
+      <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+        <span class="text-sm text-gray-600">Ver:</span>
+        <select
+          class="rounded-lg border border-gray-300 px-3 py-2 text-sm w-full sm:w-auto min-w-0 sm:min-w-[320px] max-w-full"
+          [(ngModel)]="verComo"
+          (change)="onChangeVerComo()">
+          <option *ngFor="let op of opcionesVer" [value]="op.value">
+            {{ op.label }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Tarjeta de iniciativas -->
+    <div class="bg-white rounded-xl shadow-md border border-gray-200">
+      <div
+        class="px-4 sm:px-6 py-3 sm:py-4 border-b bg-[#00a1a1] rounded-t-xl text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div class="min-w-0">
+          <h3 class="font-semibold truncate">Actividades del colaborador</h3>
+          <p class="text-[13px] opacity-90">Listado y estado de las actividades registradas</p>
+        </div>
+
+        <!-- Botón Insertar nueva iniciativa -->
+        <button type="button" (click)="abrirModalNuevaIniciativa()"
+          class="px-3 py-2 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-500 active:scale-[0.98] transition w-full sm:w-auto">
+          + Insertar nueva actividad
+        </button>
+      </div>
+
+      <div class="p-3 sm:p-4 overflow-x-auto">
+        <!-- En móvil la tabla se hace scrolleable horizontalmente -->
+        <table class="min-w-[900px] sm:min-w-full text-sm text-left text-gray-700">
+          <thead class="bg-gray-50 text-xs uppercase text-gray-600">
+            <tr>
+              <th class="px-3 py-2 w-10">#</th>
+              <th class="px-3 py-2">Actividad</th>
+              <th class="px-3 py-2">Estado</th>
+              <th class="px-3 py-2">Responsable</th>
+              <th class="px-3 py-2">Aprobación</th>
+              <th class="px-3 py-2">Avance</th>
+              <th class="px-3 py-2">Tipo</th>
+              <th class="px-3 py-2">Periodicidad</th>
+              <th class="px-3 py-2">Carga (min)</th>
+              <th class="px-3 py-2">Herramientas</th>
+              <th class="px-3 py-2 text-right">Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr class="border-b hover:bg-gray-50 cursor-pointer"
+                *ngFor="let it of iniciativas; let i = index; trackBy: trackIni"
+                (click)="onRowClick(it)">
+
+              <td class="px-3 py-2 align-top">{{ i + 1 }}</td>
+
+              <td class="px-3 py-2 align-top min-w-0">
+                <div class="font-medium truncate">{{ it.nombre_iniciativa }}</div>
+                <div class="text-xs text-gray-500 break-words">{{ it.descripcion_iniciativa }}</div>
+              </td>
+
+              <td class="px-3 py-2 align-top">
+                <span class="px-2 py-1 rounded-full border text-xs border-amber-400 text-amber-600">
+                  {{ it.estado_iniciativa || '—' }}
+                </span>
+              </td>
+
+              <td class="px-3 py-2 align-top">{{ it.correo_electronico }}</td>
+
+              <td class="px-3 py-2 align-top">
+                <span class="px-2 py-1 rounded-full border text-xs"
+                      [class.border-gray-300]="!isAprobada(it)"
+                      [class.text-gray-600]="!isAprobada(it)"
+                      [class.border-teal-500]="isAprobada(it)"
+                      [class.text-teal-700]="isAprobada(it)">
+                  {{ it.aprobacion || 'Pendiente' }}
+                </span>
+              </td>
+
+              <td class="px-3 py-2 align-top">
+                <div class="flex items-center gap-2">
+                  <div class="w-28 sm:w-32 h-2 rounded bg-gray-200 overflow-hidden">
+                    <div class="h-2 bg-teal-500" [style.width.%]="it.avance || 0"></div>
+                  </div>
+                  <span class="text-xs text-gray-600 whitespace-nowrap">{{ it.avance || 0 }}%</span>
+                </div>
+              </td>
+
+              <td class="px-3 py-2 align-top">{{ it.tipo_actividad }}</td>
+              <td class="px-3 py-2 align-top">{{ it.periodicidad }}</td>
+              <td class="px-3 py-2 align-top whitespace-nowrap">{{ it.carga_minutos }}</td>
+
+              <td class="px-3 py-2 align-top">
+                <span class="px-2 py-1 rounded-full border border-gray-300 text-xs text-gray-600 break-words">
+                  {{ it.herramientas || '—' }}
+                </span>
+              </td>
+
+              <td class="px-3 py-2 align-top text-right">
+                <button type="button" (click)="$event.stopPropagation(); onHistoriasClick(it)"
+                  class="px-3 py-1.5 rounded-lg border text-sm transition w-full sm:w-auto"
+                  [class.opacity-50]="!isAprobada(it)"
+                  [class.cursor-not-allowed]="!isAprobada(it)"
+                  [class.bg-white]="!isAprobada(it)"
+                  [class.text-gray-600]="!isAprobada(it)"
+                  [class.border-gray-300]="!isAprobada(it)"
+                  [class.bg-teal-600]="isAprobada(it)"
+                  [class.text-white]="isAprobada(it)"
+                  [class.border-teal-600]="isAprobada(it)">
+                  Historias
+                </button>
+              </td>
+            </tr>
+
+            <tr *ngIf="iniciativas.length === 0">
+              <td colspan="10" class="px-3 py-6 text-center text-gray-500">
+                No hay iniciativas registradas.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== Modal edición ===== -->
+    <div
+      *ngIf="mostrarModalEdicion && editModel"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white rounded-2xl shadow-xl w-[90vw] sm:w-[900px] max-w-[94vw] p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold">Editar actividad</h3>
+          <button class="text-gray-500" (click)="cerrarModalEdicion()">✕</button>
+        </div>
+
+        <div class="grid grid-cols-12 gap-3">
+          <div class="col-span-12 md:col-span-8">
+            <label class="block text-sm mb-1">Nombre iniciativa *</label>
+            <input class="w-full rounded-lg border px-3 py-2 text-sm" [(ngModel)]="editModel!.nombre_iniciativa">
+          </div>
+
+          <div class="col-span-12 md:col-span-4">
+            <label class="block text-sm mb-1">Aprobación *</label>
+            <select class="w-full rounded-lg border px-3 py-2 text-sm"
+                    [(ngModel)]="editModel!.aprobacion"
+                    [disabled]="!puedeAprobarActual"
+                    title="Solo el jefe inmediato puede modificar este campo">
+              <option value="Pendiente">Pendiente</option>
+              <option value="Aprobado">Aprobado</option>
+              <option value="Rechazado">Rechazado</option>
+            </select>
+            <div *ngIf="!puedeAprobarActual" class="text-[11px] text-gray-500 mt-1">
+              Solo el jefe inmediato puede cambiar la aprobación.
+            </div>
+          </div>
+
+          <div class="col-span-12">
+            <label class="block text-sm mb-1">Descripción *</label>
+            <textarea rows="3" class="w-full rounded-lg border px-3 py-2 text-sm"
+                      [(ngModel)]="editModel!.descripcion_iniciativa"></textarea>
+          </div>
+
+          <!-- Tipo de actividad -->
+          <div class="col-span-12 md:col-span-4">
+            <label class="block text-sm mb-1">Tipo de actividad *</label>
+            <select class="w-full rounded-lg border px-3 py-2 text-sm"
+                    [(ngModel)]="editModel!.tipo_actividad">
+              <option *ngFor="let opt of tipoActividadOpts" [ngValue]="opt">
+                {{ opt || '—' }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Periodicidad -->
+          <div class="col-span-12 md:col-span-4">
+            <label class="block text-sm mb-1">Periodicidad *</label>
+            <select class="w-full rounded-lg border px-3 py-2 text-sm"
+                    [(ngModel)]="editModel!.periodicidad">
+              <option *ngFor="let opt of periodicidadOpts" [ngValue]="opt">
+                {{ opt || '—' }}
+              </option>
+            </select>
+          </div>
+
+          <div class="col-span-12 md:col-span-4">
+            <label class="block text-sm mb-1">Carga (min) *</label>
+            <input type="number" min="0"
+                   class="w-full rounded-lg border px-3 py-2 text-sm"
+                   [(ngModel)]="editModel!.carga_minutos">
+          </div>
+
+          <!-- Herramientas -->
+          <div class="col-span-12">
+            <label class="block text-sm mb-1">Herramientas</label>
+            <select class="w-full rounded-lg border px-3 py-2 text-sm"
+                    [(ngModel)]="editModel!.herramientas">
+              <option *ngFor="let opt of herramientasOpts" [ngValue]="opt">
+                {{ opt || '—' }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div *ngIf="errorGuardar" class="text-red-600 text-sm mt-3">
+          {{ errorGuardar }}
+        </div>
+
+        <div class="mt-5 flex flex-col sm:flex-row sm:justify-end gap-2">
+          <button class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 w-full sm:w-auto"
+                  (click)="cerrarModalEdicion()" [disabled]="guardando">
+            Cancelar
+          </button>
+          <button class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 w-full sm:w-auto"
+                  (click)="eliminarIniciativa()" [disabled]="guardando">
+            Eliminar
+          </button>
+          <button class="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-700 w-full sm:w-auto"
+                  (click)="guardarCambios()" [disabled]="guardando">
+            {{ guardando ? 'Guardando…' : 'Guardar cambios' }}
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- ===== FIN Modal edición ===== -->
+
+    <!-- ===== Modal NUEVA iniciativa ===== -->
+    <div
+      *ngIf="mostrarModalNueva && nuevaModel"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white rounded-2xl shadow-xl w-[90vw] sm:w-[900px] max-w-[94vw] p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold">Insertar nueva iniciativa</h3>
+          <button class="text-gray-500" (click)="cerrarModalNueva()">✕</button>
+        </div>
+
+        <div class="grid grid-cols-12 gap-3">
+          <div class="col-span-12 md:col-span-8">
+            <label class="block text-sm mb-1">Nombre iniciativa *</label>
+            <input class="w-full rounded-lg border px-3 py-2 text-sm"
+                   [(ngModel)]="nuevaModel!.nombre_iniciativa">
+          </div>
+          <div class="col-span-12 md:col-span-4">
+            <label class="block text-sm mb-1">Correo (propietario) *</label>
+            <input class="w-full rounded-lg border px-3 py-2 text-sm"
+                   [(ngModel)]="nuevaModel!.correo_electronico">
+          </div>
+
+          <div class="col-span-12">
+            <label class="block text-sm mb-1">Descripción *</label>
+            <textarea rows="3" class="w-full rounded-lg border px-3 py-2 text-sm"
+                      [(ngModel)]="nuevaModel!.descripcion_iniciativa"></textarea>
+          </div>
+
+          <!-- Tipo de actividad -->
+          <div class="col-span-12 md:col-span-4">
+            <label class="block text-sm mb-1">Tipo de actividad *</label>
+            <select class="w-full rounded-lg border px-3 py-2 text-sm"
+                    [(ngModel)]="nuevaModel!.tipo_actividad">
+              <option *ngFor="let opt of tipoActividadOpts" [ngValue]="opt">
+                {{ opt || '—' }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Periodicidad -->
+          <div class="col-span-12 md:col-span-4">
+            <label class="block text-sm mb-1">Periodicidad *</label>
+            <select class="w-full rounded-lg border px-3 py-2 text-sm"
+                    [(ngModel)]="nuevaModel!.periodicidad">
+              <option *ngFor="let opt of periodicidadOpts" [ngValue]="opt">
+                {{ opt || '—' }}
+              </option>
+            </select>
+          </div>
+
+          <div class="col-span-12 md:col-span-4">
+            <label class="block text-sm mb-1">Carga (min) *</label>
+            <input type="number" min="0"
+                   class="w-full rounded-lg border px-3 py-2 text-sm"
+                   [(ngModel)]="nuevaModel!.carga_minutos">
+          </div>
+
+          <!-- Herramientas -->
+          <div class="col-span-12">
+            <label class="block text-sm mb-1">Herramientas</label>
+            <select class="w-full rounded-lg border px-3 py-2 text-sm"
+                    [(ngModel)]="nuevaModel!.herramientas">
+              <option *ngFor="let opt of herramientasOpts" [ngValue]="opt">
+                {{ opt || '—' }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div *ngIf="errorCrear" class="text-red-600 text-sm mt-3">
+          {{ errorCrear }}
+        </div>
+
+        <div class="mt-5 flex flex-col sm:flex-row sm:justify-end gap-2">
+          <button class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 w-full sm:w-auto"
+                  (click)="cerrarModalNueva()" [disabled]="creando">
+            Cancelar
+          </button>
+          <button class="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-700 w-full sm:w-auto"
+                  (click)="crearIniciativa()" [disabled]="creando">
+            {{ creando ? 'Creando…' : 'Crear iniciativa' }}
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- ===== FIN Modal NUEVA ===== -->
+
+    <!-- ===== Modal seleccionar correo ===== -->
+    <div *ngIf="mostrarSelectorCorreo"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white rounded-2xl shadow-xl w-[90vw] sm:w-[520px] max-w-[92vw] p-4 sm:p-6">
+        <h3 class="text-lg font-semibold mb-4">Selecciona el correo</h3>
+
+        <label class="block text-sm mb-2">Correo del colaborador / jefe</label>
+        <select class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                [(ngModel)]="correoSeleccionado">
+          <option value="" disabled>— Selecciona —</option>
+          <option *ngFor="let c of opcionesCorreo" [value]="c.correo">
+            {{ c.etiqueta ? (c.etiqueta + ' • ' + c.correo) : c.correo }} ({{ c.rol }})
+          </option>
+        </select>
+
+        <div class="mt-5 flex flex-col sm:flex-row sm:justify-end gap-2">
+          <button (click)="cancelarSelectorCorreo()"
+                  class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 w-full sm:w-auto">
+            Cancelar
+          </button>
+          <button (click)="confirmarSelectorCorreo()"
+                  class="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-700 w-full sm:w-auto"
+                  [disabled]="!correoSeleccionado">
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- ===== FIN Modal seleccionar correo ===== -->
+  </div>
+</div>

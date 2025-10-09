@@ -1,153 +1,113 @@
 <div class="rounded-md shadow-md p-10 mb-4 bg-gradient-to-br from-[#ffffff] to-[#008f8f]">
-    <h2 class="text-xl font-bold text-black">Crear un colaborador</h2>
-    <div class="rounded-xl border border-gray-200 bg-white shadow-md">
-  <!-- Header igual al dashboard -->
-  <div class="rounded-t-xl bg-gradient-to-br bg-[#00a1a1] px-5 py-3">
-    <h2 class="text-lg font-semibold text-white">Nuevo colaborador</h2>
-    <p class="mt-0.5 text-xs text-white/80">Crea un colaborador</p>
+  
+  <div class="rounded-xl border border-gray-200 bg-white shadow-md">
+    <!-- Header igual al dashboard -->
+    <div class="rounded-t-xl bg-gradient-to-br bg-[#00a1a1] px-5 py-3">
+      <h2 class="text-lg font-semibold text-white">Nuevo colaborador</h2>
+      <p class="mt-0.5 text-xs text-white/80">Crea un colaborador</p>
+    </div>
+
+    <form class="p-6 space-y-6" (ngSubmit)="submit()" #f="ngForm" novalidate autocomplete="off">
+      <!-- Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <!-- Nombre (requerido) -->
+        <div>
+          <label class="lbl">Nombre <span class="req">*</span></label>
+          <input type="text" [(ngModel)]="model.nombre" name="nombre" required placeholder="Ingresa nombre" class="inp" />
+        </div>
+
+        <!-- Celular -->
+        <div>
+          <label class="lbl">Celular</label>
+          <input type="text" [(ngModel)]="model.celular" name="celular" placeholder="3001234567" class="inp" />
+        </div>
+
+        <!-- Correo electrónico (requerido) -->
+        <div>
+          <label class="lbl">Correo electrónico <span class="req">*</span></label>
+          <input type="email" [(ngModel)]="model.correo_electronico" name="correo_electronico" required placeholder="nombre.apellido@empresa.com" class="inp" />
+        </div>
+
+        <!-- Vicepresidencia (select) -->
+        <div>
+          <label class="lbl">Vicepresidencia</label>
+          <select [(ngModel)]="model.vicepresidencia" name="vicepresidencia" class="inp">
+            <option [ngValue]="null">Seleccione...</option>
+            <option *ngFor="let v of VICEPRESIDENCIAS" [value]="v">{{ v }}</option>
+          </select>
+        </div>
+
+        <!-- Gerencia (select) -->
+        <div>
+          <label class="lbl">Gerencia</label>
+          <select [(ngModel)]="model.gerencia" name="gerencia" class="inp">
+            <option [ngValue]="null">Seleccione...</option>
+            <option *ngFor="let g of GERENCIAS" [value]="g">{{ g }}</option>
+          </select>
+        </div>
+
+        <!-- Dirección / Área (select) -->
+        <div>
+          <label class="lbl">Dirección / Área</label>
+          <select [(ngModel)]="model.direccion_area" name="direccion_area" class="inp">
+            <!-- Por defecto “Activo” si no eligen nada -->
+            <option [value]="'Activo'">Activo</option>
+            <option *ngFor="let d of DIRECCIONES" [value]="d">{{ d }}</option>
+          </select>
+        </div>
+
+        <!-- Nombre Jefe inmediato (select) -->
+        <div>
+          <label class="lbl">Nombre Jefe inmediato</label>
+          <select [(ngModel)]="model.nombre_jefe_inmediato" name="nombre_jefe_inmediato" class="inp">
+            <option [ngValue]="null">Seleccione...</option>
+            <option *ngFor="let n of NOMBRES_JEFES" [value]="n">{{ n }}</option>
+          </select>
+        </div>
+
+        <!-- Correo Jefe inmediato (select) -->
+        <div>
+          <label class="lbl">Correo Jefe inmediato</label>
+          <select [(ngModel)]="model.correo_jefe_inmediato" name="correo_jefe_inmediato" class="inp">
+            <option [ngValue]="null">Seleccione...</option>
+            <option *ngFor="let c of CORREOS_JEFES" [value]="c">{{ c }}</option>
+          </select>
+        </div>
+
+        <!-- Nombre Jefe inmediato 2 (select) -->
+        <div>
+          <label class="lbl">Nombre Jefe inmediato 2</label>
+          <select [(ngModel)]="model.nombre_jefe_inmediato_2" name="nombre_jefe_inmediato_2" class="inp">
+            <option [ngValue]="null">Seleccione...</option>
+            <option *ngFor="let n of NOMBRES_JEFES" [value]="n">{{ n }}</option>
+          </select>
+        </div>
+
+        <!-- Correo Jefe inmediato 2 (select) -->
+        <div>
+          <label class="lbl">Correo Jefe inmediato 2</label>
+          <select [(ngModel)]="model.correo_jefe_inmediato_2" name="correo_jefe_inmediato_2" class="inp">
+            <option [ngValue]="null">Seleccione...</option>
+            <option *ngFor="let c of CORREOS_JEFES_2" [value]="c">{{ c }}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Mensaje -->
+      <div *ngIf="message" class="text-sm" [class.text-green-600]="message.type==='ok'" [class.text-red-600]="message.type==='error'">
+        {{ message.text }}
+      </div>
+
+      <!-- Acciones -->
+      <div class="flex items-center gap-2">
+        <button type="submit" [disabled]="isSaving || !model.nombre || !model.correo_electronico" class="btn-primary disabled:opacity-50">
+          {{ isSaving ? 'Guardando...' : 'Guardar' }}
+        </button>
+        <button type="button" (click)="resetForm()" [disabled]="isSaving" class="btn-outline">
+          Limpiar
+        </button>
+      </div>
+    </form>
   </div>
-
-  <form class="p-6 space-y-6" (ngSubmit)="submit()" #f="ngForm" novalidate autocomplete="off">
-    <!-- Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-      <!-- Nombre -->
-      <div>
-        <label class="lbl">Nombre <span class="req">*</span></label>
-        <input
-          type="text" [(ngModel)]="model.nombre" name="nombre" required
-          placeholder="Ingresa nombre"
-          class="inp" />
-      </div>
-
-      <!-- Apellido -->
-      <div>
-        <label class="lbl">Apellido <span class="req">*</span></label>
-        <input
-          type="text" [(ngModel)]="model.apellido" name="apellido" required
-          placeholder="Ingresa apellido"
-          class="inp" />
-      </div>
-
-      <!-- Departamento -->
-      <div>
-        <label class="lbl">Proyecto / Departamento</label>
-        <input
-          type="text" [(ngModel)]="model.departamento" name="departamento"
-          placeholder="Ingresa nombre"
-          class="inp" />
-      </div>
-
-      <!-- Chapter -->
-      <div>
-        <label class="lbl">Chapter / Estado</label>
-        <input
-          type="text" [(ngModel)]="model.estado_chapter" name="estado_chapter"
-          placeholder="Activo"
-          class="inp" />
-      </div>
-
-      <!-- Gerencia -->
-      <div>
-        <label class="lbl">Gerencia</label>
-        <input
-          type="text" [(ngModel)]="model.gerencia" name="gerencia"
-          placeholder="Ingresa gerencia"
-          class="inp" />
-      </div>
-
-      <!-- ID -->
-      <div>
-        <label class="lbl">ID Empleado</label>
-        <input
-          type="number" [(ngModel)]="model.id_empleado" name="id_empleado"
-          placeholder="Ingresa ID"
-          class="inp" />
-      </div>
-
-      <!-- Fecha -->
-      <div>
-        <label class="lbl">Fecha de nacimiento</label>
-        <input
-          type="date" [(ngModel)]="model.fecha_nacimiento" name="fecha_nacimiento"
-          class="inp" />
-      </div>
-
-      <!-- Correo -->
-      <div>
-        <label class="lbl">Correo electrónico <span class="req">*</span></label>
-        <input
-          type="email" [(ngModel)]="model.correo_electronico" name="correo_electronico" required
-          placeholder="nombre.apellido@empresa.com"
-          class="inp" />
-      </div>
-
-      <!-- Puesto -->
-      <div>
-        <label class="lbl">Puesto</label>
-        <input
-          type="text" [(ngModel)]="model.puesto" name="puesto"
-          placeholder="Ej. Analista Senior"
-          class="inp" />
-      </div>
-
-      <!-- Vicepresidencia -->
-      <div>
-        <label class="lbl">Vicepresidencia</label>
-        <input
-          type="text" [(ngModel)]="model.vicepresidencia" name="vicepresidencia"
-          placeholder="VP Tecnología"
-          class="inp" />
-      </div>
-
-      <!-- Automatización -->
-      <div>
-        <label class="lbl">Automatización</label>
-        <input
-          type="text" [(ngModel)]="model.automatizacion" name="automatizacion"
-          placeholder="Power Apps, etc."
-          class="inp" />
-      </div>
-
-      <!-- Analítica -->
-      <div>
-        <label class="lbl">Analítica avanzada</label>
-        <input
-          type="text" [(ngModel)]="model.analitica_avanzada" name="analitica_avanzada"
-          placeholder="Dashboard Control, etc."
-          class="inp" />
-      </div>
-
-      <!-- Jefe (full) -->
-      <div class="md:col-span-2">
-        <label class="lbl">Jefe directo</label>
-        <input
-          type="text" [(ngModel)]="model.jefe_directo" name="jefe_directo"
-          placeholder="Nombre jefe"
-          class="inp" />
-      </div>
-    </div>
-
-    <!-- Mensaje -->
-    <div *ngIf="message" class="text-sm"
-         [class.text-green-600]="message.type==='ok'"
-         [class.text-red-600]="message.type==='error'">
-      {{ message.text }}
-    </div>
-
-    <!-- Acciones -->
-    <div class="flex items-center gap-2">
-      <button type="submit"
-              [disabled]="isSaving || !model.nombre || !model.apellido || !model.correo_electronico"
-              class="btn-primary disabled:opacity-50">
-        {{ isSaving ? 'Guardando...' : 'Guardar' }}
-      </button>
-      <button type="button" (click)="resetForm()" [disabled]="isSaving" class="btn-outline">
-        Limpiar
-      </button>
-    </div>
-  </form>
 </div>
-</div><!-- Card contenedor -->
-
-

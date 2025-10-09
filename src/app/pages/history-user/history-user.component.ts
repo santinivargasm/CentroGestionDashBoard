@@ -11,6 +11,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Location } from '@angular/common';
 
 // Angular Material
 import { MatInputModule } from '@angular/material/input';
@@ -21,6 +22,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatSelectModule } from '@angular/material/select';
 
 // Forms para [(ngModel)]
 import { FormsModule } from '@angular/forms';
@@ -29,21 +31,20 @@ import { FormsModule } from '@angular/forms';
 import { Chart } from 'chart.js/auto';
 import type { Chart as ChartJS } from 'chart.js';
 
-const BASE_URL = 'http://127.0.0.1:5000/api';
+const BASE_URL = 'https://hubai.azurewebsites.net';
 
 interface HistoriaDeUsuario {
   id_historia?: number;
   nombre_historia: string;
   descripcion: string;
   estado: string;
-  fase: string;
   responsable?: string | null;
   fecha_inicio: string | Date | null;
   fecha_fin: string | Date | null;
   id_iniciativa: number | null;
-  validacion_fase_1: string | boolean | null;
-  validacion_fase_2: string | boolean | null;
-  validacion_fase_n: string | boolean | null;
+  peso_por_historia?: number;   // % que representa esta historia dentro de la iniciativa
+  aporte_actual?: number;       // % que está aportando HOY (peso si está cerrada, si no 0)
+  avance_iniciativa?: number;
 }
 
 type ActividadAPI = {
@@ -89,7 +90,7 @@ type Actividad = {
     CommonModule,
     HttpClientModule,
     ReactiveFormsModule,
-    FormsModule, // <- NECESARIO para [(ngModel)]
+    FormsModule, // <- para [(ngModel)]
     MatInputModule,
     MatButtonModule,
     MatTableModule,
@@ -97,7 +98,8 @@ type Actividad = {
     MatDatepickerModule,
     MatNativeDateModule,
     MatCheckboxModule,
-    MatDialogModule
+    MatDialogModule,
+    MatSelectModule
   ],
   templateUrl: './history-user.component.html',
   styleUrls: ['./history-user.component.css']
@@ -109,6 +111,8 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
   error: string | null = null;
   idIniciativa: number | null = null;
 
+  public mostrarModalCreacion: boolean = false;
+  public errorGuardar: string | null = null;
   private dialogRef?: MatDialogRef<any>;
   private prevState: any;
 
@@ -136,8 +140,18 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
   @ViewChild('pieTipoCanvas') pieTipoCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('doughPeriodicidadCanvas') doughPeriodicidadCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('barHerramientaCanvas') barHerramientaCanvas?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('crearTpl', { static: true }) crearTpl!: TemplateRef<any>;
 
   private chartsReady = false;
+
+  // ====== Form/Modal Actividad Diaria ======
+  actividadForm!: FormGroup;
+  private dialogActividadRef?: MatDialogRef<any>;
+
+  // ====== Editar estado historia ======
+  estadoEditForm!: FormGroup;
+  historiaEditando?: HistoriaDeUsuario;
+  private dialogEditarHistoriaRef?: MatDialogRef<any>;
 
   constructor(
     private fb: FormBuilder,
@@ -145,13 +159,16 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
     private route: ActivatedRoute,
     private dialog: MatDialog,
     private router: Router,
-    private cdr: ChangeDetectorRef
-  ) {}
+    private cdr: ChangeDetectorRef,
+    private location: Location
+  ) { }
 
   // ===== Ciclo de vida =====
   ngOnInit(): void {
     this.prevState = history.state;
     this.initForm();
+    this.initActividadForm();
+    this.initEstadoEditForm();
 
     const routeId = this.route.snapshot.paramMap.get('id');
     const queryId = this.route.snapshot.queryParamMap.get('id');
@@ -160,16 +177,13 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
 
     if (this.idIniciativa && !Number.isNaN(this.idIniciativa)) {
       this.obtenerHistorias(this.idIniciativa);
-      this.getActividadesByIniciativa(this.idIniciativa);
     }
   }
 
   ngAfterViewInit(): void {
     this.chartsReady = true;
-    // Si ya cargamos actividades, renderizamos
     if (this.actividades.length) {
       this.destroyCharts();
-      // Permite que los canvas se pinten correctamente
       setTimeout(() => this.renderCharts(), 0);
     }
   }
@@ -224,37 +238,105 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
       nombre_historia: [''],
       descripcion: [''],
       estado: ['Pendiente'],
-      fase: [''],
       responsable: [''],
       fecha_inicio: [''],
       fecha_fin: [''],
-      id_iniciativa: [this.idIniciativa],
-      validacion_fase_1: [false],
-      validacion_fase_2: [false],
-      validacion_fase_n: [false]
+      id_iniciativa: [this.idIniciativa]
     });
   }
 
-  // ---------- POPUP ----------
+  // ===== Form actividad diaria =====
+  initActividadForm(): void {
+    this.actividadForm = this.fb.group({
+      fecha: [new Date()],
+      nombre_actividad: [''],
+      descripcion: [''],
+      tipo_actividad: [''],
+      periodicidad: [''],
+      carga_minutos: [0],
+      herramientas: [''],
+      id_historia: [null],
+      correo_electronico: [''],
+      correo_electronico_buckup: ['']
+    });
+  }
+
+  // ===== Form edición de estado =====
+  initEstadoEditForm(): void {
+    this.estadoEditForm = this.fb.group({
+      estado: ['Pendiente']
+    });
+  }
+
+  // ---------- POPUP historias ----------
+  // OPEN
   openDialog(tpl: TemplateRef<any>): void {
     this.historiaForm.reset({
       id_iniciativa: this.idIniciativa,
-      estado: 'Pendiente',
-      validacion_fase_1: false,
-      validacion_fase_2: false,
-      validacion_fase_n: false
+      estado: 'Pendiente'
     });
+    this.errorGuardar = null;           // ADD: limpia error del modal
+    this.mostrarModalCreacion = true;   // ADD: muestra el overlay con tu *ngIf
+
     this.dialogRef = this.dialog.open(tpl, {
+      width: '1100px',
+      maxWidth: '96vw',
+      autoFocus: false,
+      restoreFocus: false,
+      hasBackdrop: false,
+    });
+  }
+
+  // CLOSE
+  closeDialog(): void {
+    this.mostrarModalCreacion = false;  // ADD: oculta el overlay con tu *ngIf
+    this.errorGuardar = null;           // ADD
+    this.dialogRef?.close();
+  }
+
+  // ---------- POPUP actividad diaria ----------
+  openActividadDialog(tpl: TemplateRef<any>): void {
+    this.initActividadForm();
+    const firstH = this.historias?.[0];
+    this.actividadForm.patchValue({ id_historia: firstH?.id_historia ?? null });
+    this.dialogActividadRef = this.dialog.open(tpl, {
       width: '1100px',
       maxWidth: '96vw',
       autoFocus: false,
       restoreFocus: false
     });
   }
-  closeDialog(): void { this.dialogRef?.close(); }
+  closeActividadDialog(): void { this.dialogActividadRef?.close(); }
+
+  // ---------- POPUP editar historia (estado) ----------
+  openEditarHistoriaDialog(tpl: TemplateRef<any>, h: HistoriaDeUsuario): void {
+    this.historiaEditando = h;
+    this.estadoEditForm.reset({ estado: h?.estado || 'Pendiente' });
+    this.dialogEditarHistoriaRef = this.dialog.open(tpl, {
+      width: '900px',        // <-- antes 640px, ahora coincide con tu tarjeta
+      maxWidth: '96vw',
+      maxHeight: 'none',     // <-- evita scroll impuesto por el contenedor
+      autoFocus: false,
+      restoreFocus: false,
+      panelClass: 'cg-plain-dialog' // <-- opcional, ver CSS abajo
+    });
+  }
+
+  closeEditarHistoriaDialog(): void {
+    this.dialogEditarHistoriaRef?.close();
+    this.historiaEditando = undefined;
+  }
 
   // ---------- ATRÁS ----------
+  // ---------- ATRÁS ----------
   volver(): void {
+    // Si hay historial en esta pestaña, volvemos a la vista previa (misma instancia)
+    if (typeof history !== 'undefined' && history.length > 1) {
+      this.location.back();
+      return;
+    }
+
+    // Fallback (por ejemplo si abrieron esta URL directamente en una pestaña nueva)
     this.router.navigate(['/dashboard'], {
       state: {
         reopenModal: true,
@@ -268,40 +350,111 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
     return {
       ...h,
       fecha_inicio: this.toISODate(h?.fecha_inicio),
-      fecha_fin: this.toISODate(h?.fecha_fin),
-      validacion_fase_1: h?.validacion_fase_1,
-      validacion_fase_2: h?.validacion_fase_2,
-      validacion_fase_n: h?.validacion_fase_n
+      fecha_fin: this.toISODate(h?.fecha_fin)
     };
   }
 
   crearHistoria(): void {
     const raw = this.historiaForm.value as Partial<HistoriaDeUsuario>;
-    const historia = {
-      ...raw,
-      estado: raw.estado && String(raw.estado).trim() ? raw.estado : 'Pendiente',
+    const payload: HistoriaDeUsuario = {
+      nombre_historia: String(raw.nombre_historia || '').trim(),
+      descripcion: String(raw.descripcion || ''),
+      estado: String(raw.estado || 'Pendiente').trim() || 'Pendiente',
+      responsable: (raw.responsable && String(raw.responsable).trim()) ? String(raw.responsable).trim() : null,
       fecha_inicio: this.toISODate(raw.fecha_inicio),
-      fecha_fin: this.toISODate(raw.fecha_fin)
+      fecha_fin: this.toISODate(raw.fecha_fin),
+      id_iniciativa: Number(raw.id_iniciativa ?? this.idIniciativa ?? 0) || null
     };
 
-    this.http.post(`${BASE_URL}/historias_usuario`, historia).subscribe({
+    if (!payload.nombre_historia) { alert('El nombre de la historia es obligatorio.'); return; }
+    if (!payload.id_iniciativa) { alert('Falta el ID de la iniciativa.'); return; }
+
+    this.http.post(`${BASE_URL}/api/historias_usuario`, payload).subscribe({
       next: () => {
-        if (historia.id_iniciativa) this.obtenerHistorias(Number(historia.id_iniciativa));
-        this.closeDialog();
+        this.errorGuardar = null;            // ADD: limpia error visible
+        if (this.idIniciativa) this.obtenerHistorias(this.idIniciativa);
+        this.closeDialog();                  // cierra (también baja el flag)
       },
       error: (err) => {
-        console.error('Error al crear historia', err);
-        this.error = err?.error?.error || 'No se pudo crear la historia.';
+        console.error('Error creando historia', err);
+        this.errorGuardar = err?.error?.error || 'No se pudo crear la historia.';  // ADD: muestra error en el modal
+        // (opcional) puedes mantener el modal abierto para leer el error
+      }
+    });
+  }
+
+  // Guardar cambio de estado de historia
+  guardarEstadoHistoria(): void {
+    if (!this.historiaEditando?.id_historia) return;
+    const estado = String(this.estadoEditForm.value?.estado || '').trim();
+    if (!estado) return;
+
+    this.http
+      .put(`${BASE_URL}/api/historias_usuario/${this.historiaEditando.id_historia}/estado`, { estado })
+      .subscribe({
+        next: () => {
+          if (this.idIniciativa) {
+            this.obtenerHistorias(this.idIniciativa);
+          }
+          this.closeEditarHistoriaDialog();
+        },
+        error: (err) => {
+          console.error('Error al actualizar estado de historia', err);
+          alert(err?.error?.error || 'No se pudo actualizar el estado.');
+        }
+      });
+  }
+
+  // ===== Eliminar historia =====
+  eliminarHistoria(): void {
+    const id = this.historiaEditando?.id_historia;
+    if (!id) return;
+
+    const confirmado = window.confirm(
+      '¿Eliminar esta historia de usuario? Esta acción no se puede deshacer.'
+    );
+    if (!confirmado) return;
+
+    this.http.delete(`${BASE_URL}/api/historias_usuario/${id}`).subscribe({
+      next: () => {
+        if (this.idIniciativa) this.obtenerHistorias(this.idIniciativa);
+        this.closeEditarHistoriaDialog();
+      },
+      error: (err) => {
+        console.error('Error eliminando historia', err);
+        alert(err?.error?.error || 'No se pudo eliminar la historia.');
       }
     });
   }
 
   obtenerHistorias(id_iniciativa: number): void {
     this.cargando = true; this.error = null;
-    this.http.get<HistoriaDeUsuario[]>(`${BASE_URL}/historias_usuario/${id_iniciativa}`)
+    this.http.get<HistoriaDeUsuario[]>(`${BASE_URL}/api/historias_usuario/${id_iniciativa}`)
       .subscribe({
         next: (rows) => {
-          this.historias = (rows || []).map(r => this.normalizeRow(r));
+          // Normalizas como ya lo hacías
+          const normalizadas = (rows || []).map(r => this.normalizeRow(r));
+
+          // [ADD] calcular % por historia y aporte actual
+          const total = normalizadas.length;
+          const peso = total ? +(100 / total).toFixed(2) : 0;
+          const cerrados = new Set(['cerrada', 'finalizada', 'completada', 'hecha']);
+          const nCerradas = normalizadas.filter(h => cerrados.has((h.estado || '').toLowerCase())).length;
+          const avance = total ? +((nCerradas * 100) / total).toFixed(2) : 0;
+
+          // ✅ ÚNICA LÍNEA NUEVA: sincroniza avance con el backend
+          this.syncAvanceIniciativa(avance);
+
+          this.historias = normalizadas.map(h => {
+            const estaCerrada = cerrados.has((h.estado || '').toLowerCase());
+            return {
+              ...h,
+              peso_por_historia: peso,
+              aporte_actual: estaCerrada ? peso : 0,
+              avance_iniciativa: avance
+            };
+          });
+
           this.cargando = false;
         },
         error: (err) => {
@@ -313,31 +466,15 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
       });
   }
 
-  // ================== ACTIVIDADES / ANÁLISIS ==================
-  private getActividadesByIniciativa(id_iniciativa: number) {
-    this.http.get<ActividadAPI[]>(`${BASE_URL}/actividades_por_iniciativa/${id_iniciativa}`)
-      .subscribe({
-        next: (rows) => {
-          this.actividades = this.normalizeRows(rows);
-          this.applyFiltersAndCompute(true);
-        },
-        error: (err) => {
-          console.error('Error cargando actividades por iniciativa:', err);
-          this.actividades = [];
-          this.applyFiltersAndCompute(true);
-        }
-      });
-  }
-
   // ==== Filtros por fecha ====
   private toEpochUTC(v: string | Date): number { const d = (v instanceof Date) ? v : new Date(v); return d.getTime(); }
-  private ymdToEpochStart(ymd: string): number { const [y,m,d]=ymd.split('-').map(Number); return Date.UTC(y, m-1, d, 0,0,0,0); }
-  private ymdToEpochEnd(ymd: string): number { const [y,m,d]=ymd.split('-').map(Number); return Date.UTC(y, m-1, d, 23,59,59,999); }
+  private ymdToEpochStart(ymd: string): number { const [y, m, d] = ymd.split('-').map(Number); return Date.UTC(y, m - 1, d, 0, 0, 0, 0); }
+  private ymdToEpochEnd(ymd: string): number { const [y, m, d] = ymd.split('-').map(Number); return Date.UTC(y, m - 1, d, 23, 59, 59, 999); }
 
   setDatePreset(preset: 'hoy' | '7d' | '30d' | 'todo') {
     const now = new Date();
     const toYMD = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     if (preset === 'todo') { this.dateFrom = ''; this.dateTo = ''; }
     else if (preset === 'hoy') { const ymd = toYMD(now); this.dateFrom = ymd; this.dateTo = ymd; }
@@ -351,7 +488,7 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
   onApplyDateFilter() { this.applyFiltersAndCompute(true); }
 
   private applyFiltersAndCompute(repaint = false) {
-    if (this.dateFrom && this.dateTo && this.dateFrom > this.dateTo) { const t=this.dateFrom; this.dateFrom=this.dateTo; this.dateTo=t; }
+    if (this.dateFrom && this.dateTo && this.dateFrom > this.dateTo) { const t = this.dateFrom; this.dateFrom = this.dateTo; this.dateTo = t; }
 
     let filtered = this.actividades.slice();
 
@@ -371,16 +508,15 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
     this.actividadesFiltradas = filtered;
 
     // KPIs
-    this.totalMinutos = filtered.reduce((a,b)=>a + (b.carga_minutos||0), 0);
-    this.totalCosto   = filtered.reduce((a,b)=>a + (b.costo_operativo||0), 0);
-    const validAuto   = filtered.filter(x => Number.isFinite(x.porcentaje_automatizacion));
+    this.totalMinutos = filtered.reduce((a, b) => a + (b.carga_minutos || 0), 0);
+    this.totalCosto = filtered.reduce((a, b) => a + (b.costo_operativo || 0), 0);
+    const validAuto = filtered.filter(x => Number.isFinite(x.porcentaje_automatizacion));
     this.promedioAutomatizacion = validAuto.length
-      ? +(validAuto.reduce((a,b)=>a+(b.porcentaje_automatizacion||0),0) / validAuto.length).toFixed(1)
+      ? +(validAuto.reduce((a, b) => a + (b.porcentaje_automatizacion || 0), 0) / validAuto.length).toFixed(1)
       : 0;
 
     if (repaint && this.chartsReady) {
       this.destroyCharts();
-      // Espera un tick por si los canvas aún no están en DOM
       setTimeout(() => this.renderCharts(), 0);
     }
   }
@@ -393,18 +529,37 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
     this.barHerramientaChart?.destroy(); this.barHerramientaChart = undefined;
   }
 
+  // ADD: sync avance de la iniciativa con el backend (silencioso si falla)
+  private syncAvanceIniciativa(avance: number) {
+    if (this.idIniciativa == null || Number.isNaN(this.idIniciativa)) return;
+
+    // Redondeo simple para no enviar demasiados decimales
+    const pct = Math.round(avance);
+
+    // Si está al 100%, marcamos la iniciativa como Finalizada (si tu API lo permite)
+    const body: any = { avance: pct };
+    if (pct >= 100) body.estado_iniciativa = 'Finalizada';
+
+    // ⬇️ Usa este endpoint si lo tienes. Si no, mira la NOTA al final.
+    this.http.put(`${BASE_URL}/api/iniciativas/${this.idIniciativa}/avance`, body)
+      .subscribe({
+        next: () => { },
+        error: () => { /* no interrumpir la UI si el endpoint no existe o falla */ }
+      });
+  }
+
   private groupSum<T extends Record<string, any>>(rows: T[], key: (r: T) => string, val: (r: T) => number) {
     const map = new Map<string, number>();
     rows.forEach(r => {
       const k = (key(r) || '(sin dato)').trim();
       map.set(k, (map.get(k) || 0) + (val(r) || 0));
     });
-    return Array.from(map.entries()).map(([k,v])=>({key:k,value:v})).sort((a,b)=>b.value-a.value);
+    return Array.from(map.entries()).map(([k, v]) => ({ key: k, value: v })).sort((a, b) => b.value - a.value);
   }
   private buildPalette(n: number): string[] {
-    const PALETTE = ['#00a1a1','#FFB600','#008f8f','#1d2530','#14b8a6','#0ea5e9','#64748b','#ef4444','#84cc16','#a855f7','#ec4899','#f97316'];
+    const PALETTE = ['#00a1a1', '#FFB600', '#008f8f', '#1d2530', '#14b8a6', '#0ea5e9', '#64748b', '#ef4444', '#84cc16', '#a855f7', '#ec4899', '#f97316'];
     const out: string[] = [];
-    for (let i=0;i<n;i++) out.push(PALETTE[i % PALETTE.length]);
+    for (let i = 0; i < n; i++) out.push(PALETTE[i % PALETTE.length]);
     return out;
   }
 
@@ -417,12 +572,12 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
 
     // PARETO
     const byAct = this.groupSum(this.actividadesFiltradas, x => x.nombre_actividad, x => x.carga_minutos);
-    const labelsPareto = byAct.map(x=>x.key);
-    const valores = byAct.map(x=>x.value);
-    const total = valores.reduce((a,b)=>a+b,0);
-    const acumuladoPct = valores.map((v,i)=> {
-      const sum = valores.slice(0,i+1).reduce((a,b)=>a+b,0);
-      return total ? +(((sum/total)*100).toFixed(2)) : 0;
+    const labelsPareto = byAct.map(x => x.key);
+    const valores = byAct.map(x => x.value);
+    const total = valores.reduce((a, b) => a + b, 0);
+    const acumuladoPct = valores.map((v, i) => {
+      const sum = valores.slice(0, i + 1).reduce((a, b) => a + b, 0);
+      return total ? +(((sum / total) * 100).toFixed(2)) : 0;
     });
 
     const UMBRAL_MINUTOS = 44 * 60;
@@ -435,7 +590,7 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
         labels: labelsPareto,
         datasets: [
           { type: 'bar', label: 'Minutos', data: valores, backgroundColor: 'rgba(13,148,136,0.65)', borderColor: '#0f766e', borderWidth: 1, yAxisID: 'y', order: 1 },
-          { type: 'line', label: `Umbral 44h (${UMBRAL_MINUTOS} min)`, data: new Array(labelsPareto.length).fill(UMBRAL_MINUTOS), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.15)', borderDash: [6,6], pointRadius: 0, yAxisID: 'y', order: 3 },
+          { type: 'line', label: `Umbral 44h (${UMBRAL_MINUTOS} min)`, data: new Array(labelsPareto.length).fill(UMBRAL_MINUTOS), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.15)', borderDash: [6, 6], pointRadius: 0, yAxisID: 'y', order: 3 },
           { type: 'line', label: 'Acumulado (%)', data: acumuladoPct, borderColor: '#FFB600', backgroundColor: 'rgba(255,182,0,0.15)', tension: 0.3, yAxisID: 'y1', order: 2 },
         ]
       },
@@ -445,7 +600,7 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
         scales: {
           x: { ticks: { autoSkip: true, maxRotation: 0, color: '#111827' } },
           y: { title: { display: true, text: 'Minutos' }, ticks: { color: '#111827' }, max: yMax },
-          y1:{ position:'right', min:0, max:100, grid:{ drawOnChartArea:false }, title:{ display:true, text:'Acumulado %' }, ticks:{ color:'#111827' } }
+          y1: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, title: { display: true, text: 'Acumulado %' }, ticks: { color: '#111827' } }
         }
       }
     });
@@ -455,10 +610,10 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
     this.pieTipoChart = new Chart(pieTipoEl, {
       type: 'pie',
       data: {
-        labels: byTipo.map(x=>x.key),
-        datasets: [{ label:'Minutos', data: byTipo.map(x=>x.value), backgroundColor: this.buildPalette(byTipo.length), borderColor:'#fff', borderWidth:2, hoverOffset:8 }]
+        labels: byTipo.map(x => x.key),
+        datasets: [{ label: 'Minutos', data: byTipo.map(x => x.value), backgroundColor: this.buildPalette(byTipo.length), borderColor: '#fff', borderWidth: 2, hoverOffset: 8 }]
       },
-      options: { maintainAspectRatio: false, plugins: { legend: { position:'bottom', labels:{ color:'#111827' } } } }
+      options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#111827' } } } }
     });
 
     // DOUGH periodicidad
@@ -466,13 +621,13 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
     this.doughPeriodicidadChart = new Chart(doughEl, {
       type: 'doughnut',
       data: {
-        labels: byPer.map(x=>x.key),
-        datasets: [{ label:'Minutos', data: byPer.map(x=>x.value), backgroundColor: this.buildPalette(byPer.length), borderColor:'#fff', borderWidth:2, hoverOffset:8 }]
+        labels: byPer.map(x => x.key),
+        datasets: [{ label: 'Minutos', data: byPer.map(x => x.value), backgroundColor: this.buildPalette(byPer.length), borderColor: '#fff', borderWidth: 2, hoverOffset: 8 }]
       },
-      options: { maintainAspectRatio:false, cutout:'55%', plugins:{ legend:{ position:'bottom', labels:{ color:'#111827' } } } }
+      options: { maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'bottom', labels: { color: '#111827' } } } }
     });
 
-    // BARRAS herramienta (si vienen múltiples herramientas separadas por coma, tomamos la primera)
+    // BARRAS herramienta
     const byHerr = this.groupSum(
       this.actividadesFiltradas,
       x => (x.herramientas || '').split(',')[0].trim() || '(sin herramienta)',
@@ -482,15 +637,15 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
     this.barHerramientaChart = new Chart(barHerrEl, {
       type: 'bar',
       data: {
-        labels: byHerr.map(x=>x.key),
-        datasets: [{ label:'Minutos', data: byHerr.map(x=>x.value), backgroundColor:'rgba(20,184,166,0.6)', borderColor:'#0f766e', borderWidth:1 }]
+        labels: byHerr.map(x => x.key),
+        datasets: [{ label: 'Minutos', data: byHerr.map(x => x.value), backgroundColor: 'rgba(20,184,166,0.6)', borderColor: '#0f766e', borderWidth: 1 }]
       },
       options: {
-        maintainAspectRatio:false,
-        plugins:{ legend:{ position:'top', labels:{ color:'#111827' } } },
-        scales:{
-          x:{ ticks:{ color:'#111827', autoSkip:true, maxRotation:0 }},
-          y:{ ticks:{ color:'#111827' }, title:{ display:true, text:'Minutos' } }
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { color: '#111827' } } },
+        scales: {
+          x: { ticks: { color: '#111827', autoSkip: true, maxRotation: 0 } },
+          y: { ticks: { color: '#111827' }, title: { display: true, text: 'Minutos' } }
         }
       }
     });

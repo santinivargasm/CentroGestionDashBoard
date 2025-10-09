@@ -11,9 +11,12 @@ import { Router, RouterModule, RouterOutlet } from '@angular/router';
 })
 export class Sidebar {
   collapsed = signal(false);
-  router = inject(Router)
+  router = inject(Router);
 
   isActive(route: string) {
-    return this.router.url === route
+    // Normaliza la URL actual (sin query ni fragmentos)
+    const url = this.router.url.split('?')[0].split('#')[0];
+    // Activo si es exactamente la ruta o si está en un sub-segmento (p.ej. /actividades/loquesea)
+    return url === route || url.startsWith(route + '/');
   }
 }
