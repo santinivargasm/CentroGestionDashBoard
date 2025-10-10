@@ -1,0 +1,46 @@
+name: Build and Deploy Angular App to Azure Web App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Angular app
+        run: npm run build --if-present
+
+      - name: Upload production-ready files
+        uses: actions/upload-artifact@v4
+        with:
+          name: angular-dist
+          path: dist/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: angular-dist
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: centro-gestion-dashboard
+          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+          package: ./dist
