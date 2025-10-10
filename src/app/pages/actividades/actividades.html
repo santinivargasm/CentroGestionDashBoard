@@ -68,7 +68,7 @@
                 *ngFor="let it of iniciativas; let i = index; trackBy: trackIni"
                 (click)="onRowClick(it)">
 
-              <td class="px-3 py-2 align-top">{{ i + 1 }}</td>
+              <td class="px-3 py-2 align-top">{{ it.id_iniciativa }}</td>
 
               <td class="px-3 py-2 align-top min-w-0">
                 <div class="font-medium truncate">{{ it.nombre_iniciativa }}</div>
@@ -150,7 +150,7 @@
 
         <div class="grid grid-cols-12 gap-3">
           <div class="col-span-12 md:col-span-8">
-            <label class="block text-sm mb-1">Nombre iniciativa *</label>
+            <label class="block text-sm mb-1">Nombre actividad *</label>
             <input class="w-full rounded-lg border px-3 py-2 text-sm" [(ngModel)]="editModel!.nombre_iniciativa">
           </div>
 
@@ -244,13 +244,13 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div class="bg-white rounded-2xl shadow-xl w-[90vw] sm:w-[900px] max-w-[94vw] p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold">Insertar nueva iniciativa</h3>
+          <h3 class="text-lg font-semibold">Insertar nueva actividad</h3>
           <button class="text-gray-500" (click)="cerrarModalNueva()">✕</button>
         </div>
 
         <div class="grid grid-cols-12 gap-3">
           <div class="col-span-12 md:col-span-8">
-            <label class="block text-sm mb-1">Nombre iniciativa *</label>
+            <label class="block text-sm mb-1">Nombre actividad *</label>
             <input class="w-full rounded-lg border px-3 py-2 text-sm"
                    [(ngModel)]="nuevaModel!.nombre_iniciativa">
           </div>

@@ -270,14 +270,17 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
 
   // ---------- POPUP historias ----------
   // OPEN
-  openDialog(tpl: TemplateRef<any>): void {
-    this.historiaForm.reset({
-      id_iniciativa: this.idIniciativa,
-      estado: 'Pendiente'
-    });
-    this.errorGuardar = null;           // ADD: limpia error del modal
-    this.mostrarModalCreacion = true;   // ADD: muestra el overlay con tu *ngIf
+// OPEN
+openDialog(tpl?: TemplateRef<any> | null): void {
+  this.historiaForm.reset({
+    id_iniciativa: this.idIniciativa,
+    estado: 'Pendiente'
+  });
+  this.errorGuardar = null;
+  this.mostrarModalCreacion = true;   // ← tu overlay propio
 
+  // Solo abrir MatDialog si realmente recibimos un TemplateRef válido
+  if (tpl) {
     this.dialogRef = this.dialog.open(tpl, {
       width: '1100px',
       maxWidth: '96vw',
@@ -285,7 +288,11 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
       restoreFocus: false,
       hasBackdrop: false,
     });
+  } else {
+    this.dialogRef = undefined;
   }
+}
+
 
   // CLOSE
   closeDialog(): void {
@@ -540,12 +547,7 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
     const body: any = { avance: pct };
     if (pct >= 100) body.estado_iniciativa = 'Finalizada';
 
-    // ⬇️ Usa este endpoint si lo tienes. Si no, mira la NOTA al final.
-    this.http.put(`${BASE_URL}/api/iniciativas/${this.idIniciativa}/avance`, body)
-      .subscribe({
-        next: () => { },
-        error: () => { /* no interrumpir la UI si el endpoint no existe o falla */ }
-      });
+
   }
 
   private groupSum<T extends Record<string, any>>(rows: T[], key: (r: T) => string, val: (r: T) => number) {
