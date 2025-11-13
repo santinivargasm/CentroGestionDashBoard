@@ -38,6 +38,8 @@ export class FormulariosComponent {
     'Presidencia',
     'Secretaría General',
     'Tecnología',
+    'Copiloto',
+    'Vicepresidencia de Operaciones',
   ];
 
   GERENCIAS: string[] = [
@@ -49,6 +51,7 @@ export class FormulariosComponent {
     'Corporativo- Transporte',
     'Corporativo-Retail',
     'Corporativo-Servicios',
+    'Copiloto',
     'Cumplimiento',
     'Data Science',
     'Desarrollo de Soluciones',
@@ -73,6 +76,8 @@ export class FormulariosComponent {
     'Seguridad de la información',
     'Talento humano',
     'Transformación Digital',
+    'Vicepresidencia de Operaciones',
+    'Operaciones',
   ];
 
   DIRECCIONES: string[] = [
@@ -85,6 +90,7 @@ export class FormulariosComponent {
     'Corporativo- Transporte',
     'Corporativo-Retail',
     'Corporativo-Servicios',
+    'Copiloto',
     'Data Science',
     'Desarrollo de Mercados',
     'Desarrollo Organizacional',
@@ -115,6 +121,7 @@ export class FormulariosComponent {
     'Tesorería',
     'Transformación Digital',
     'Valoración y Selección',
+    'Direccion de Robótica',
   ];
 
   NOMBRES_JEFES: string[] = [
@@ -159,6 +166,7 @@ export class FormulariosComponent {
     'Yaqueline Astrid Díaz Rúa',
     'Yenny Raquel Sotelo Cortés',
     'Yeny Paola Giraldo Puentes',
+    'Mario Andres Izquierdo Recaman',
   ];
 
   CORREOS_JEFES: string[] = [
@@ -202,6 +210,7 @@ export class FormulariosComponent {
     'walter.casallas@credibanco.com',
     'yaqueline.diaz@credibanco.com',
     'yenny.sotelo@credibanco.com',
+    'mario.izquierdo@credibanco.com',
   ];
 
   // La lista 2 trae un pequeño cambio en cesar.tenjo (igual a la tuya)
@@ -246,6 +255,7 @@ export class FormulariosComponent {
     'walter.casallas@credibanco.com',
     'yaqueline.diaz@credibanco.com',
     'yenny.sotelo@credibanco.com',
+    'mario.izquierdo@credibanco.com',
   ];
 
   // ---------- Modelo (solo columnas de la tabla colaborador) ----------

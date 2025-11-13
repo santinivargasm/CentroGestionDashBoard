@@ -8,19 +8,16 @@
 
   <div class="p-4 sm:p-6">
 
-    <!-- Barra superior: cambiar correo + Ver -->
+    <!-- Barra superior: SOLO "Ver" (sin botón Cambiar correo) -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-3">
-      <button type="button" (click)="cambiarCorreo()"
-        class="px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white hover:bg-gray-50 w-full sm:w-auto">
-        Cambiar correo
-      </button>
-
       <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-        <span class="text-sm text-gray-600">Ver:</span>
+        <span class="text-sm text-gray-600" title="Filtra las actividades según el propietario">Ver:</span>
         <select
           class="rounded-lg border border-gray-300 px-3 py-2 text-sm w-full sm:w-auto min-w-0 sm:min-w-[320px] max-w-full"
           [(ngModel)]="verComo"
-          (change)="onChangeVerComo()">
+          (change)="onChangeVerComo()"
+          title="Selecciona el colaborador cuyas actividades deseas visualizar"
+          aria-label="Selector de colaborador para filtrar actividades">
           <option *ngFor="let op of opcionesVer" [value]="op.value">
             {{ op.label }}
           </option>
@@ -33,12 +30,21 @@
       <div
         class="px-4 sm:px-6 py-3 sm:py-4 border-b bg-[#00a1a1] rounded-t-xl text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div class="min-w-0">
-          <h3 class="font-semibold truncate">Actividades del colaborador</h3>
-          <p class="text-[13px] opacity-90">Listado y estado de las actividades registradas</p>
+          <h3 class="font-semibold truncate"
+              title="Panel de actividades registradas para el colaborador seleccionado">
+            Actividades del colaborador : {{ nombreActual }}
+          </h3>
+          <p class="text-[13px] opacity-90"
+             title="Aquí verás nombre, estado, aprobación, avance y metadatos de cada actividad">
+            Listado y estado de las actividades registradas
+          </p>
+          
         </div>
 
         <!-- Botón Insertar nueva iniciativa -->
         <button type="button" (click)="abrirModalNuevaIniciativa()"
+          title="Crea una nueva actividad para el colaborador actual"
+          aria-label="Insertar nueva actividad"
           class="px-3 py-2 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-500 active:scale-[0.98] transition w-full sm:w-auto">
           + Insertar nueva actividad
         </button>
@@ -46,68 +52,93 @@
 
       <div class="p-3 sm:p-4 overflow-x-auto">
         <!-- En móvil la tabla se hace scrolleable horizontalmente -->
-        <table class="min-w-[900px] sm:min-w-full text-sm text-left text-gray-700">
+        <table class="min-w-[900px] sm:min-w-full text-sm text-left text-gray-700" aria-label="Tabla de actividades">
           <thead class="bg-gray-50 text-xs uppercase text-gray-600">
             <tr>
-              <th class="px-3 py-2 w-10">#</th>
-              <th class="px-3 py-2">Actividad</th>
-              <th class="px-3 py-2">Estado</th>
-              <th class="px-3 py-2">Responsable</th>
-              <th class="px-3 py-2">Aprobación</th>
-              <th class="px-3 py-2">Avance</th>
-              <th class="px-3 py-2">Tipo</th>
-              <th class="px-3 py-2">Periodicidad</th>
-              <th class="px-3 py-2">Carga (min)</th>
-              <th class="px-3 py-2">Herramientas</th>
-              <th class="px-3 py-2 text-right">Acciones</th>
+              <th class="px-3 py-2 w-10" title="Identificador interno de la actividad">#</th>
+              <th class="px-3 py-2" title="Nombre y descripción de la actividad">Actividad</th>
+              <th class="px-3 py-2" title="Estado actual calculado por avance de historias">Estado</th>
+              <th class="px-3 py-2" title="Correo del responsable de la actividad">Responsable</th>
+              <th class="px-3 py-2" title="Resultado de la revisión del jefe: Aprobado, Rechazado o Pendiente">Aprobación</th>
+              <th class="px-3 py-2" title="Porcentaje de historias cerradas frente al total">Avance</th>
+              <th class="px-3 py-2" title="Clasificación general del trabajo realizado">Tipo</th>
+              <th class="px-3 py-2" title="Frecuencia con la que se ejecuta la actividad">Periodicidad</th>
+              <th class="px-3 py-2" title="Esfuerzo estimado en minutos">Carga (min)</th>
+              <th class="px-3 py-2" title="Herramientas o plataformas usadas">Herramientas</th>
+              <th class="px-3 py-2 text-right" title="Acciones disponibles sobre la actividad">Acciones</th>
             </tr>
           </thead>
 
           <tbody>
             <tr class="border-b hover:bg-gray-50 cursor-pointer"
                 *ngFor="let it of iniciativas; let i = index; trackBy: trackIni"
-                (click)="onRowClick(it)">
+                (click)="onRowClick(it)"
+                [attr.title]="'Haz clic para ver y editar la actividad «' + (it.nombre_iniciativa || '—') + '»'">
 
               <td class="px-3 py-2 align-top">{{ it.id_iniciativa }}</td>
 
               <td class="px-3 py-2 align-top min-w-0">
-                <div class="font-medium truncate">{{ it.nombre_iniciativa }}</div>
-                <div class="text-xs text-gray-500 break-words">{{ it.descripcion_iniciativa }}</div>
+                <div class="font-medium truncate"
+                     [attr.title]="it.nombre_iniciativa">
+                  {{ it.nombre_iniciativa }}
+                </div>
+                <div class="text-xs text-gray-500 break-words"
+                     [attr.title]="it.descripcion_iniciativa">
+                  {{ it.descripcion_iniciativa }}
+                </div>
               </td>
 
               <td class="px-3 py-2 align-top">
-                <span class="px-2 py-1 rounded-full border text-xs border-amber-400 text-amber-600">
+                <span class="px-2 py-1 rounded-full border text-xs border-amber-400 text-amber-600"
+                      [attr.title]="'Estado de la actividad según el avance total: ' + (it.estado_iniciativa || '—')">
                   {{ it.estado_iniciativa || '—' }}
                 </span>
               </td>
 
-              <td class="px-3 py-2 align-top">{{ it.correo_electronico }}</td>
+              <td class="px-3 py-2 align-top"
+                  [attr.title]="'Responsable: ' + it.correo_electronico">
+                {{ it.correo_electronico }}
+              </td>
 
               <td class="px-3 py-2 align-top">
                 <span class="px-2 py-1 rounded-full border text-xs"
                       [class.border-gray-300]="!isAprobada(it)"
                       [class.text-gray-600]="!isAprobada(it)"
                       [class.border-teal-500]="isAprobada(it)"
-                      [class.text-teal-700]="isAprobada(it)">
+                      [class.text-teal-700]="isAprobada(it)"
+                      [attr.title]="isAprobada(it) ? 'La actividad fue aprobada por el jefe' : (it.aprobacion ? 'Estado de aprobación: ' + it.aprobacion : 'Aprobación pendiente')">
                   {{ it.aprobacion || 'Pendiente' }}
                 </span>
               </td>
 
               <td class="px-3 py-2 align-top">
-                <div class="flex items-center gap-2">
-                  <div class="w-28 sm:w-32 h-2 rounded bg-gray-200 overflow-hidden">
+                <div class="flex items-center gap-2"
+                     [attr.title]="'Avance: ' + (it.avance || 0) + '% de historias cerradas'">
+                  <div class="w-28 sm:w-32 h-2 rounded bg-gray-200 overflow-hidden" aria-label="Barra de progreso de avance">
                     <div class="h-2 bg-teal-500" [style.width.%]="it.avance || 0"></div>
                   </div>
                   <span class="text-xs text-gray-600 whitespace-nowrap">{{ it.avance || 0 }}%</span>
                 </div>
               </td>
 
-              <td class="px-3 py-2 align-top">{{ it.tipo_actividad }}</td>
-              <td class="px-3 py-2 align-top">{{ it.periodicidad }}</td>
-              <td class="px-3 py-2 align-top whitespace-nowrap">{{ it.carga_minutos }}</td>
+              <td class="px-3 py-2 align-top"
+                  [attr.title]="'Tipo de actividad: ' + (it.tipo_actividad || '—')">
+                {{ it.tipo_actividad }}
+              </td>
+              <td class="px-3 py-2 align-top"
+                  [attr.title]="'Periodicidad: ' + (it.periodicidad || '—')">
+                {{ it.periodicidad }}
+              </td>
+
+              <!-- ⚠️ Aquí removí el operador ?? para evitar NG8102 -->
+              <td class="px-3 py-2 align-top whitespace-nowrap"
+                  [attr.title]="'Carga estimada en minutos: ' + it.carga_minutos">
+                {{ it.carga_minutos }}
+              </td>
 
               <td class="px-3 py-2 align-top">
-                <span class="px-2 py-1 rounded-full border border-gray-300 text-xs text-gray-600 break-words">
+                <span class="px-2 py-1 rounded-full border border-gray-300 text-xs text-gray-600 break-words"
+                      [attr.title]="it.herramientas ? ('Herramientas: ' + it.herramientas) : 'Sin herramientas registradas'">
                   {{ it.herramientas || '—' }}
                 </span>
               </td>
@@ -122,14 +153,16 @@
                   [class.border-gray-300]="!isAprobada(it)"
                   [class.bg-teal-600]="isAprobada(it)"
                   [class.text-white]="isAprobada(it)"
-                  [class.border-teal-600]="isAprobada(it)">
+                  [class.border-teal-600]="isAprobada(it)"
+                  [attr.title]="isAprobada(it) ? 'Abrir historias de usuario de esta actividad' : 'Disponible cuando la actividad esté Aprobada'">
                   Historias
                 </button>
               </td>
             </tr>
 
             <tr *ngIf="iniciativas.length === 0">
-              <td colspan="10" class="px-3 py-6 text-center text-gray-500">
+              <td colspan="10" class="px-3 py-6 text-center text-gray-500"
+                  title="Aún no hay actividades para el colaborador seleccionado">
                 No hay iniciativas registradas.
               </td>
             </tr>
@@ -144,14 +177,16 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div class="bg-white rounded-2xl shadow-xl w-[90vw] sm:w-[900px] max-w-[94vw] p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold">Editar actividad</h3>
-          <button class="text-gray-500" (click)="cerrarModalEdicion()">✕</button>
+          <h3 class="text-lg font-semibold" title="Editar los datos de la actividad">Editar actividad</h3>
+          <button class="text-gray-500" (click)="cerrarModalEdicion()" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="grid grid-cols-12 gap-3">
           <div class="col-span-12 md:col-span-8">
             <label class="block text-sm mb-1">Nombre actividad *</label>
-            <input class="w-full rounded-lg border px-3 py-2 text-sm" [(ngModel)]="editModel!.nombre_iniciativa">
+            <input class="w-full rounded-lg border px-3 py-2 text-sm"
+                   [(ngModel)]="editModel!.nombre_iniciativa"
+                   title="Escribe un nombre claro y breve para la actividad">
           </div>
 
           <div class="col-span-12 md:col-span-4">
@@ -172,14 +207,16 @@
           <div class="col-span-12">
             <label class="block text-sm mb-1">Descripción *</label>
             <textarea rows="3" class="w-full rounded-lg border px-3 py-2 text-sm"
-                      [(ngModel)]="editModel!.descripcion_iniciativa"></textarea>
+                      [(ngModel)]="editModel!.descripcion_iniciativa"
+                      title="Describe el objetivo, alcance y entregables principales"></textarea>
           </div>
 
           <!-- Tipo de actividad -->
           <div class="col-span-12 md:col-span-4">
             <label class="block text-sm mb-1">Tipo de actividad *</label>
             <select class="w-full rounded-lg border px-3 py-2 text-sm"
-                    [(ngModel)]="editModel!.tipo_actividad">
+                    [(ngModel)]="editModel!.tipo_actividad"
+                    title="Selecciona la categoría que mejor describe la actividad">
               <option *ngFor="let opt of tipoActividadOpts" [ngValue]="opt">
                 {{ opt || '—' }}
               </option>
@@ -190,7 +227,8 @@
           <div class="col-span-12 md:col-span-4">
             <label class="block text-sm mb-1">Periodicidad *</label>
             <select class="w-full rounded-lg border px-3 py-2 text-sm"
-                    [(ngModel)]="editModel!.periodicidad">
+                    [(ngModel)]="editModel!.periodicidad"
+                    title="Indica la frecuencia con la que se ejecuta">
               <option *ngFor="let opt of periodicidadOpts" [ngValue]="opt">
                 {{ opt || '—' }}
               </option>
@@ -201,14 +239,16 @@
             <label class="block text-sm mb-1">Carga (min) *</label>
             <input type="number" min="0"
                    class="w-full rounded-lg border px-3 py-2 text-sm"
-                   [(ngModel)]="editModel!.carga_minutos">
+                   [(ngModel)]="editModel!.carga_minutos"
+                   title="Tiempo estimado en minutos por ejecución">
           </div>
 
           <!-- Herramientas -->
           <div class="col-span-12">
             <label class="block text-sm mb-1">Herramientas</label>
             <select class="w-full rounded-lg border px-3 py-2 text-sm"
-                    [(ngModel)]="editModel!.herramientas">
+                    [(ngModel)]="editModel!.herramientas"
+                    title="Herramientas o plataformas utilizadas">
               <option *ngFor="let opt of herramientasOpts" [ngValue]="opt">
                 {{ opt || '—' }}
               </option>
@@ -222,15 +262,18 @@
 
         <div class="mt-5 flex flex-col sm:flex-row sm:justify-end gap-2">
           <button class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 w-full sm:w-auto"
-                  (click)="cerrarModalEdicion()" [disabled]="guardando">
+                  (click)="cerrarModalEdicion()" [disabled]="guardando"
+                  title="Descarta cambios y cierra la ventana">
             Cancelar
           </button>
           <button class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 w-full sm:w-auto"
-                  (click)="eliminarIniciativa()" [disabled]="guardando">
+                  (click)="eliminarIniciativa()" [disabled]="guardando"
+                  title="Elimina la actividad de forma permanente">
             Eliminar
           </button>
           <button class="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-700 w-full sm:w-auto"
-                  (click)="guardarCambios()" [disabled]="guardando">
+                  (click)="guardarCambios()" [disabled]="guardando"
+                  [attr.title]="guardando ? 'Guardando cambios…' : 'Guarda los cambios realizados'">
             {{ guardando ? 'Guardando…' : 'Guardar cambios' }}
           </button>
         </div>
@@ -244,33 +287,37 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div class="bg-white rounded-2xl shadow-xl w-[90vw] sm:w-[900px] max-w-[94vw] p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold">Insertar nueva actividad</h3>
-          <button class="text-gray-500" (click)="cerrarModalNueva()">✕</button>
+          <h3 class="text-lg font-semibold" title="Crear una nueva actividad">Insertar nueva actividad</h3>
+          <button class="text-gray-500" (click)="cerrarModalNueva()" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="grid grid-cols-12 gap-3">
           <div class="col-span-12 md:col-span-8">
             <label class="block text-sm mb-1">Nombre actividad *</label>
             <input class="w-full rounded-lg border px-3 py-2 text-sm"
-                   [(ngModel)]="nuevaModel!.nombre_iniciativa">
+                   [(ngModel)]="nuevaModel!.nombre_iniciativa"
+                   title="Escribe un nombre claro y breve para la actividad">
           </div>
           <div class="col-span-12 md:col-span-4">
             <label class="block text-sm mb-1">Correo (propietario) *</label>
             <input class="w-full rounded-lg border px-3 py-2 text-sm"
-                   [(ngModel)]="nuevaModel!.correo_electronico">
+                   [(ngModel)]="nuevaModel!.correo_electronico"
+                   title="Correo del responsable de la actividad">
           </div>
 
           <div class="col-span-12">
             <label class="block text-sm mb-1">Descripción *</label>
             <textarea rows="3" class="w-full rounded-lg border px-3 py-2 text-sm"
-                      [(ngModel)]="nuevaModel!.descripcion_iniciativa"></textarea>
+                      [(ngModel)]="nuevaModel!.descripcion_iniciativa"
+                      title="Describe objetivo, alcance y entregables principales"></textarea>
           </div>
 
           <!-- Tipo de actividad -->
           <div class="col-span-12 md:col-span-4">
             <label class="block text-sm mb-1">Tipo de actividad *</label>
             <select class="w-full rounded-lg border px-3 py-2 text-sm"
-                    [(ngModel)]="nuevaModel!.tipo_actividad">
+                    [(ngModel)]="nuevaModel!.tipo_actividad"
+                    title="Selecciona la categoría de la actividad">
               <option *ngFor="let opt of tipoActividadOpts" [ngValue]="opt">
                 {{ opt || '—' }}
               </option>
@@ -281,7 +328,8 @@
           <div class="col-span-12 md:col-span-4">
             <label class="block text-sm mb-1">Periodicidad *</label>
             <select class="w-full rounded-lg border px-3 py-2 text-sm"
-                    [(ngModel)]="nuevaModel!.periodicidad">
+                    [(ngModel)]="nuevaModel!.periodicidad"
+                    title="Frecuencia de ejecución de la actividad">
               <option *ngFor="let opt of periodicidadOpts" [ngValue]="opt">
                 {{ opt || '—' }}
               </option>
@@ -292,14 +340,16 @@
             <label class="block text-sm mb-1">Carga (min) *</label>
             <input type="number" min="0"
                    class="w-full rounded-lg border px-3 py-2 text-sm"
-                   [(ngModel)]="nuevaModel!.carga_minutos">
+                   [(ngModel)]="nuevaModel!.carga_minutos"
+                   title="Tiempo estimado en minutos por ejecución">
           </div>
 
           <!-- Herramientas -->
           <div class="col-span-12">
             <label class="block text-sm mb-1">Herramientas</label>
             <select class="w-full rounded-lg border px-3 py-2 text-sm"
-                    [(ngModel)]="nuevaModel!.herramientas">
+                    [(ngModel)]="nuevaModel!.herramientas"
+                    title="Herramientas o plataformas utilizadas">
               <option *ngFor="let opt of herramientasOpts" [ngValue]="opt">
                 {{ opt || '—' }}
               </option>
@@ -313,11 +363,13 @@
 
         <div class="mt-5 flex flex-col sm:flex-row sm:justify-end gap-2">
           <button class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 w-full sm:w-auto"
-                  (click)="cerrarModalNueva()" [disabled]="creando">
+                  (click)="cerrarModalNueva()" [disabled]="creando"
+                  title="Descarta datos y cierra la ventana">
             Cancelar
           </button>
           <button class="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-700 w-full sm:w-auto"
-                  (click)="crearIniciativa()" [disabled]="creando">
+                  (click)="crearIniciativa()" [disabled]="creando"
+                  [attr.title]="creando ? 'Creando actividad…' : 'Crear nueva actividad'">
             {{ creando ? 'Creando…' : 'Crear iniciativa' }}
           </button>
         </div>
@@ -326,33 +378,7 @@
     <!-- ===== FIN Modal NUEVA ===== -->
 
     <!-- ===== Modal seleccionar correo ===== -->
-    <div *ngIf="mostrarSelectorCorreo"
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-[90vw] sm:w-[520px] max-w-[92vw] p-4 sm:p-6">
-        <h3 class="text-lg font-semibold mb-4">Selecciona el correo</h3>
+    <!-- (ELIMINADO COMPLETAMENTE) -->
 
-        <label class="block text-sm mb-2">Correo del colaborador / jefe</label>
-        <select class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                [(ngModel)]="correoSeleccionado">
-          <option value="" disabled>— Selecciona —</option>
-          <option *ngFor="let c of opcionesCorreo" [value]="c.correo">
-            {{ c.etiqueta ? (c.etiqueta + ' • ' + c.correo) : c.correo }} ({{ c.rol }})
-          </option>
-        </select>
-
-        <div class="mt-5 flex flex-col sm:flex-row sm:justify-end gap-2">
-          <button (click)="cancelarSelectorCorreo()"
-                  class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 w-full sm:w-auto">
-            Cancelar
-          </button>
-          <button (click)="confirmarSelectorCorreo()"
-                  class="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-700 w-full sm:w-auto"
-                  [disabled]="!correoSeleccionado">
-            Confirmar
-          </button>
-        </div>
-      </div>
-    </div>
-    <!-- ===== FIN Modal seleccionar correo ===== -->
   </div>
 </div>

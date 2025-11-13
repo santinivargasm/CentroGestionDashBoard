@@ -7,7 +7,7 @@ import {
   ChangeDetectorRef,
   ViewChild
 } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -42,8 +42,8 @@ interface HistoriaDeUsuario {
   fecha_inicio: string | Date | null;
   fecha_fin: string | Date | null;
   id_iniciativa: number | null;
-  peso_por_historia?: number;   // % que representa esta historia dentro de la iniciativa
-  aporte_actual?: number;       // % que está aportando HOY (peso si está cerrada, si no 0)
+  peso_por_historia?: number;
+  aporte_actual?: number;
   avance_iniciativa?: number;
 }
 
@@ -82,6 +82,14 @@ type Actividad = {
   herramientas: string;
   correo_electronico: string | null;
 };
+
+// ===== Comentarios dentro del modal de historia =====
+interface Comentario {
+  id_comentario: number;
+  id_historia: number;
+  comentario: string;
+  fecha: string | Date | null;
+}
 
 @Component({
   selector: 'app-history-user',
@@ -140,7 +148,7 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
   @ViewChild('pieTipoCanvas') pieTipoCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('doughPeriodicidadCanvas') doughPeriodicidadCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('barHerramientaCanvas') barHerramientaCanvas?: ElementRef<HTMLCanvasElement>;
-  @ViewChild('crearTpl', { static: true }) crearTpl!: TemplateRef<any>;
+  @ViewChild('editarHistoriaTpl', { static: true }) editarHistoriaTpl!: TemplateRef<any>;
 
   private chartsReady = false;
 
@@ -152,6 +160,14 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
   estadoEditForm!: FormGroup;
   historiaEditando?: HistoriaDeUsuario;
   private dialogEditarHistoriaRef?: MatDialogRef<any>;
+
+  // ====== Comentarios dentro del modal ======
+  comentarios: Comentario[] = [];
+  comentarioForm!: FormGroup;
+  comentarioEditForm!: FormGroup;
+  comentarioEditando: Comentario | null = null;
+  cargandoComentarios = false;
+  errorComentarios: string | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -169,6 +185,7 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
     this.initForm();
     this.initActividadForm();
     this.initEstadoEditForm();
+    this.initComentarioForms();
 
     const routeId = this.route.snapshot.paramMap.get('id');
     const queryId = this.route.snapshot.queryParamMap.get('id');
@@ -235,13 +252,13 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
   // ===== Form historias =====
   initForm(): void {
     this.historiaForm = this.fb.group({
-      nombre_historia: [''],
-      descripcion: [''],
-      estado: ['Pendiente'],
+      nombre_historia: ['', Validators.required],
+      descripcion: ['', Validators.required],
+      estado: ['Pendiente', Validators.required],
       responsable: [''],
       fecha_inicio: [''],
       fecha_fin: [''],
-      id_iniciativa: [this.idIniciativa]
+      id_iniciativa: [this.idIniciativa, Validators.required]
     });
   }
 
@@ -268,82 +285,69 @@ export class HistoryUserComponent implements OnInit, AfterViewInit {
     });
   }
 
-  // ---------- POPUP historias ----------
-  // OPEN
-// OPEN
-openDialog(tpl?: TemplateRef<any> | null): void {
-  this.historiaForm.reset({
-    id_iniciativa: this.idIniciativa,
-    estado: 'Pendiente'
-  });
-  this.errorGuardar = null;
-  this.mostrarModalCreacion = true;   // ← tu overlay propio
-
-  // Solo abrir MatDialog si realmente recibimos un TemplateRef válido
-  if (tpl) {
-    this.dialogRef = this.dialog.open(tpl, {
-      width: '1100px',
-      maxWidth: '96vw',
-      autoFocus: false,
-      restoreFocus: false,
-      hasBackdrop: false,
+  // ===== Formularios de comentarios =====
+  private initComentarioForms() {
+    this.comentarioForm = this.fb.group({
+      comentario: ['', Validators.required]
     });
-  } else {
-    this.dialogRef = undefined;
+    this.comentarioEditForm = this.fb.group({
+      comentario: ['', Validators.required]
+    });
   }
-}
 
+  // ---------- POPUP historias (crear) ----------
+  openDialog(): void {
+    this.historiaForm.reset({
+      id_iniciativa: this.idIniciativa,
+      estado: 'Pendiente',
+      fecha_inicio: '',
+      fecha_fin: ''
+    });
+    this.errorGuardar = null;
+    this.mostrarModalCreacion = true;
+  }
 
-  // CLOSE
   closeDialog(): void {
-    this.mostrarModalCreacion = false;  // ADD: oculta el overlay con tu *ngIf
-    this.errorGuardar = null;           // ADD
+    this.mostrarModalCreacion = false;
+    this.errorGuardar = null;
     this.dialogRef?.close();
   }
 
-  // ---------- POPUP actividad diaria ----------
-  openActividadDialog(tpl: TemplateRef<any>): void {
-    this.initActividadForm();
-    const firstH = this.historias?.[0];
-    this.actividadForm.patchValue({ id_historia: firstH?.id_historia ?? null });
-    this.dialogActividadRef = this.dialog.open(tpl, {
-      width: '1100px',
-      maxWidth: '96vw',
-      autoFocus: false,
-      restoreFocus: false
-    });
-  }
-  closeActividadDialog(): void { this.dialogActividadRef?.close(); }
-
-  // ---------- POPUP editar historia (estado) ----------
+  // ---------- POPUP editar historia (estado + comentarios) ----------
+  // Método para abrir el modal de editar historia
+  // ---------- POPUP editar historia (estado + comentarios) ----------
   openEditarHistoriaDialog(tpl: TemplateRef<any>, h: HistoriaDeUsuario): void {
     this.historiaEditando = h;
-    this.estadoEditForm.reset({ estado: h?.estado || 'Pendiente' });
+    this.estadoEditForm.reset({
+      estado: h?.estado || 'Pendiente'
+    });
+    this.obtenerComentariosDeHistoria(h.id_historia!);
     this.dialogEditarHistoriaRef = this.dialog.open(tpl, {
-      width: '900px',        // <-- antes 640px, ahora coincide con tu tarjeta
+      width: '900px',
       maxWidth: '96vw',
-      maxHeight: 'none',     // <-- evita scroll impuesto por el contenedor
+      maxHeight: 'none',
       autoFocus: false,
       restoreFocus: false,
-      panelClass: 'cg-plain-dialog' // <-- opcional, ver CSS abajo
+      panelClass: 'cg-plain-dialog'
     });
   }
 
   closeEditarHistoriaDialog(): void {
     this.dialogEditarHistoriaRef?.close();
     this.historiaEditando = undefined;
+    this.comentarios = [];
+    this.comentarioEditando = null;
+    this.errorComentarios = null;
+    this.cargandoComentarios = false;
   }
 
-  // ---------- ATRÁS ----------
+
   // ---------- ATRÁS ----------
   volver(): void {
-    // Si hay historial en esta pestaña, volvemos a la vista previa (misma instancia)
     if (typeof history !== 'undefined' && history.length > 1) {
       this.location.back();
       return;
     }
-
-    // Fallback (por ejemplo si abrieron esta URL directamente en una pestaña nueva)
     this.router.navigate(['/dashboard'], {
       state: {
         reopenModal: true,
@@ -374,18 +378,18 @@ openDialog(tpl?: TemplateRef<any> | null): void {
     };
 
     if (!payload.nombre_historia) { alert('El nombre de la historia es obligatorio.'); return; }
+    if (!payload.descripcion) { alert('La descripción es obligatoria.'); return; }
     if (!payload.id_iniciativa) { alert('Falta el ID de la iniciativa.'); return; }
 
     this.http.post(`${BASE_URL}/api/historias_usuario`, payload).subscribe({
       next: () => {
-        this.errorGuardar = null;            // ADD: limpia error visible
+        this.errorGuardar = null;
         if (this.idIniciativa) this.obtenerHistorias(this.idIniciativa);
-        this.closeDialog();                  // cierra (también baja el flag)
+        this.closeDialog();
       },
       error: (err) => {
         console.error('Error creando historia', err);
-        this.errorGuardar = err?.error?.error || 'No se pudo crear la historia.';  // ADD: muestra error en el modal
-        // (opcional) puedes mantener el modal abierto para leer el error
+        this.errorGuardar = err?.error?.error || 'No se pudo crear la historia.';
       }
     });
   }
@@ -439,17 +443,14 @@ openDialog(tpl?: TemplateRef<any> | null): void {
     this.http.get<HistoriaDeUsuario[]>(`${BASE_URL}/api/historias_usuario/${id_iniciativa}`)
       .subscribe({
         next: (rows) => {
-          // Normalizas como ya lo hacías
           const normalizadas = (rows || []).map(r => this.normalizeRow(r));
 
-          // [ADD] calcular % por historia y aporte actual
           const total = normalizadas.length;
           const peso = total ? +(100 / total).toFixed(2) : 0;
           const cerrados = new Set(['cerrada', 'finalizada', 'completada', 'hecha']);
           const nCerradas = normalizadas.filter(h => cerrados.has((h.estado || '').toLowerCase())).length;
           const avance = total ? +((nCerradas * 100) / total).toFixed(2) : 0;
 
-          // ✅ ÚNICA LÍNEA NUEVA: sincroniza avance con el backend
           this.syncAvanceIniciativa(avance);
 
           this.historias = normalizadas.map(h => {
@@ -539,15 +540,10 @@ openDialog(tpl?: TemplateRef<any> | null): void {
   // ADD: sync avance de la iniciativa con el backend (silencioso si falla)
   private syncAvanceIniciativa(avance: number) {
     if (this.idIniciativa == null || Number.isNaN(this.idIniciativa)) return;
-
-    // Redondeo simple para no enviar demasiados decimales
     const pct = Math.round(avance);
-
-    // Si está al 100%, marcamos la iniciativa como Finalizada (si tu API lo permite)
     const body: any = { avance: pct };
     if (pct >= 100) body.estado_iniciativa = 'Finalizada';
-
-
+    // (intencionado sin request aquí)
   }
 
   private groupSum<T extends Record<string, any>>(rows: T[], key: (r: T) => string, val: (r: T) => number) {
@@ -653,5 +649,92 @@ openDialog(tpl?: TemplateRef<any> | null): void {
     });
 
     return true;
+  }
+
+  // ====== Comentarios (CRUD) ======
+  private obtenerComentariosDeHistoria(id_historia: number) {
+    if (!id_historia) { this.comentarios = []; return; }
+    this.cargandoComentarios = true;
+    this.errorComentarios = null;
+
+    this.http.get<Comentario[]>(`${BASE_URL}/api/comentarios_historia/${id_historia}`).subscribe({
+      next: (rows) => {
+        this.comentarios = (rows || []).map(r => ({
+          ...r,
+          fecha: r.fecha ? new Date(String(r.fecha)) : null
+        }));
+        this.cargandoComentarios = false;
+      },
+      error: (err) => {
+        console.error('Error al obtener comentarios', err);
+        this.errorComentarios = 'No se pudieron cargar los comentarios.';
+        this.comentarios = [];
+        this.cargandoComentarios = false;
+      }
+    });
+  }
+
+  agregarComentario() {
+    if (!this.historiaEditando?.id_historia) return;
+    if (this.comentarioForm.invalid) return;
+
+    const comentario = String(this.comentarioForm.value.comentario || '').trim();
+    if (!comentario) return;
+
+    this.http.post(`${BASE_URL}/api/comentarios_historia`, {
+      id_historia: this.historiaEditando.id_historia,
+      comentario
+    }).subscribe({
+      next: () => {
+        this.comentarioForm.reset({ comentario: '' });
+        this.obtenerComentariosDeHistoria(this.historiaEditando!.id_historia!);
+      },
+      error: (err) => {
+        console.error('Error al agregar comentario', err);
+        this.errorComentarios = 'No se pudo agregar el comentario.';
+      }
+    });
+  }
+
+  iniciarEditarComentario(c: Comentario) {
+    this.comentarioEditando = c;
+    this.comentarioEditForm.reset({ comentario: c.comentario });
+  }
+
+  cancelarEditarComentario() {
+    this.comentarioEditando = null;
+    this.comentarioEditForm.reset({ comentario: '' });
+  }
+
+  guardarEdicionComentario() {
+    if (!this.comentarioEditando) return;
+    if (this.comentarioEditForm.invalid) return;
+
+    const texto = String(this.comentarioEditForm.value.comentario || '').trim();
+    if (!texto) return;
+
+    this.http.put(`${BASE_URL}/api/comentarios_historia/${this.comentarioEditando.id_comentario}`, {
+      comentario: texto
+    }).subscribe({
+      next: () => {
+        const idHist = this.historiaEditando!.id_historia!;
+        this.cancelarEditarComentario();
+        this.obtenerComentariosDeHistoria(idHist);
+      },
+      error: (err) => {
+        console.error('Error al editar comentario', err);
+        this.errorComentarios = 'No se pudo editar el comentario.';
+      }
+    });
+  }
+
+  // (Opcional) eliminar comentario
+  eliminarComentario(c: Comentario) {
+    if (!confirm('¿Eliminar este comentario?')) return;
+    this.http.delete(`${BASE_URL}/api/comentarios_historia/${c.id_comentario}`).subscribe({
+      next: () => this.obtenerComentariosDeHistoria(this.historiaEditando!.id_historia!),
+      error: (err) => { console.error(err); this.errorComentarios = 'No se pudo eliminar.'; }
+    });
+
   }
 }

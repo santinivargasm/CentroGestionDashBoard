@@ -1,216 +1,192 @@
 <!-- Contenedor principal -->
 <div
   class="rounded-2xl shadow-md p-4 sm:p-6 lg:p-10 mb-8 bg-gradient-to-br from-[#ffffff] to-[#008f8f] border border-[#cfe7e4]">
-
   <!-- Header -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-6">
-    <div class="flex items-center gap-3">
-      <!-- Botón Atrás -->
-      <button type="button" (click)="volver()"
+    <div class="flex items-center gap-3"> <!-- Botón Atrás --> <button type="button" (click)="volver()"
+        title="Volver a la vista anterior" aria-label="Volver"
         class="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[#0f766e] border-[#0f766e]/30 hover:bg-[#0f766e]/10 hover:border-[#0f766e]/40 transition shadow-sm w-full sm:w-auto">
-        <span class="inline-block -ml-1 text-lg">←</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- ==================== POPUP CREAR HISTORIA ==================== -->
-
+        <span class="inline-block -ml-1 text-lg">←</span> </button> </div>
+  </div> <!-- ==================== POPUP CREAR HISTORIA ==================== -->
   <div *ngIf="mostrarModalCreacion" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
     <div
       class="bg-white rounded-2xl shadow-xl w-[90vw] sm:w-[900px] max-w-[94vw] p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
-      <!-- Encabezado igual al de Iniciativas -->
+      <!-- Encabezado -->
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-gray-900">
-          Crear Historia de Usuario
-        </h3>
-        <button class="text-gray-500 hover:text-gray-700" (click)="closeDialog()">✕</button>
-      </div>
-
-      <!-- Cuerpo -->
+        <h3 class="text-lg font-semibold text-gray-900" title="Crea una nueva historia de usuario"> Crear Historia de
+          Usuario </h3> <button class="text-gray-500 hover:text-gray-700" (click)="closeDialog()"
+          title="Cerrar ventana">✕</button>
+      </div> <!-- Cuerpo -->
       <form [formGroup]="historiaForm" (ngSubmit)="crearHistoria()" class="grid grid-cols-12 gap-3">
-        <div class="col-span-12 md:col-span-6">
-          <label class="block text-sm mb-1">Nombre de la Historia *</label>
-          <input class="w-full rounded-lg border px-3 py-2 text-sm" type="text" formControlName="nombre_historia">
+        <div class="col-span-12 md:col-span-6"> <label class="block text-sm mb-1">Nombre de la Historia *</label> <input
+            class="w-full rounded-lg border px-3 py-2 text-sm" type="text" formControlName="nombre_historia"
+            title="Escribe un nombre claro y breve para la historia"> </div>
+        <div class="col-span-12"> <label class="block text-sm mb-1">Descripción *</label> <textarea rows="3"
+            class="w-full rounded-lg border px-3 py-2 text-sm" formControlName="descripcion"
+            title="Describe objetivo, alcance y criterio de cierre"></textarea> </div>
+        <div class="col-span-12 md:col-span-6"> <label class="block text-sm mb-1">Fecha de Inicio *</label> <input
+            type="date" formControlName="fecha_inicio" title="Fecha de inicio planificada"
+            class="w-full rounded-lg border px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
         </div>
-
-        <div class="col-span-12">
-          <label class="block text-sm mb-1">Descripción *</label>
-          <textarea rows="3" class="w-full rounded-lg border px-3 py-2 text-sm"
-            formControlName="descripcion"></textarea>
+        <div class="col-span-12 md:col-span-6"> <label class="block text-sm mb-1">Fecha de Fin *</label>
+          <!-- CORREGIDO: ahora usa fecha_fin --> <input type="date" formControlName="fecha_fin"
+            title="Fecha de finalización planificada"
+            class="w-full rounded-lg border px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
         </div>
-
-        <div class="col-span-12 md:col-span-6">
-          <label class="block text-sm mb-1">Fecha de Inicio *</label>
-          <input type="date" formControlName="fecha_inicio" class="w-full rounded-lg border px-3 py-2 text-sm bg-white text-gray-900
-           focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
-        </div>
-
-
-        <div class="col-span-12 md:col-span-6">
-          <label class="block text-sm mb-1">Fecha de Fin *</label>
-          <input type="date" formControlName="fecha_inicio" class="w-full rounded-lg border px-3 py-2 text-sm bg-white text-gray-900
-           focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
-        </div>
-
-        <div *ngIf="errorGuardar" class="text-red-600 text-sm col-span-12">
-          {{ errorGuardar }}
-        </div>
-
-        <!-- Botones igual al modal de Iniciativas -->
-        <div class="col-span-12 mt-5 flex flex-col sm:flex-row sm:justify-end gap-2">
-          <button type="button"
+        <div *ngIf="errorGuardar" class="text-red-600 text-sm col-span-12"> {{ errorGuardar }} </div> <!-- Botones -->
+        <div class="col-span-12 mt-5 flex flex-col sm:flex-row sm:justify-end gap-2"> <button type="button"
             class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 w-full sm:w-auto"
-            (click)="closeDialog()">
-            Cancelar
-          </button>
-          <button type="submit"
+            (click)="closeDialog()" title="Descartar y cerrar"> Cancelar </button> <button type="submit"
             class="px-4 py-2 rounded-lg bg-[#00a1a1] text-white text-sm hover:bg-[#008f8f] w-full sm:w-auto"
-            [disabled]="historiaForm.invalid">
-            Guardar
-          </button>
-        </div>
+            [disabled]="historiaForm.invalid" title="Guardar historia de usuario"> Guardar </button> </div>
       </form>
     </div>
-  </div>
-  <!-- ===== FIN Modal CREAR HISTORIA DE USUARIO ===== -->
-
-
-  <!-- ==================== POPUP EDITAR HISTORIA (ESTADO) ==================== -->
-  <ng-template #editarHistoriaTpl>
-    <!-- Contenedor con el mismo estilo del modal "Crear Historia de Usuario" -->
+  </div> <!-- ===== FIN Modal CREAR HISTORIA DE USUARIO ===== -->
+  <!-- ==================== POPUP EDITAR HISTORIA (ESTADO + COMENTARIOS) ==================== --> <ng-template
+    #editarHistoriaTpl>
     <div
       class="bg-white rounded-2xl shadow-xl w-[90vw] sm:w-[900px] max-w-[94vw] p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
-      <!-- Header idéntico -->
+      <!-- Encabezado -->
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-gray-900">Editar estado de la historia</h3>
-        <button class="text-gray-500 hover:text-gray-700" type="button" (click)="closeEditarHistoriaDialog()">✕</button>
-      </div>
-
-      <!-- Info de la historia (igual jerarquía visual) -->
+        <h3 class="text-lg font-semibold text-gray-900" title="Editar el estado de la historia">Editar estado de la
+          historia</h3> <button class="text-gray-500 hover:text-gray-700" type="button"
+          (click)="closeEditarHistoriaDialog()" title="Cerrar ventana">✕</button>
+      </div> <!-- Detalles de la historia -->
       <div class="mb-3 text-sm text-gray-700">
         <div><b>ID:</b> {{ historiaEditando?.id_historia }}</div>
         <div><b>Nombre:</b> {{ historiaEditando?.nombre_historia }}</div>
-      </div>
-
-      <!-- Cuerpo con misma grilla y botones del modal de Crear -->
+      </div> <!-- Formulario para editar estado -->
       <form [formGroup]="estadoEditForm" (ngSubmit)="guardarEstadoHistoria()" class="grid grid-cols-12 gap-3">
-        <div class="col-span-12 md:col-span-6">
-          <label class="block text-sm mb-1">Estado *</label>
-          <!-- Solo apariencia: outline para que se vea como input con borde -->
-          <!-- DESPUÉS (nativo, igual al estilo de "Ver:") -->
-          <div class="w-full">
-            <select formControlName="estado"
+        <div class="col-span-12 md:col-span-6"> <label class="block text-sm mb-1">Estado *</label>
+          <div class="w-full"> <select formControlName="estado" title="Selecciona el estado actual de la historia"
               class="rounded-lg border border-gray-300 px-3 py-2 text-sm w-full sm:w-auto min-w-0 sm:min-w-[320px] max-w-full bg-white">
               <option value="Pendiente">Pendiente</option>
               <option value="Abierta">Abierta</option>
               <option value="Cerrada">Cerrada</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Botonera: Eliminar a la izquierda, Cancelar/Guardar a la derecha -->
-        <div class="col-span-12 mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <!-- Eliminar -->
-          <button type="button"
+            </select> </div>
+        </div> <!-- Botones -->
+        <div class="col-span-12 mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"> <button
+            type="button"
             class="px-4 py-2 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 w-full sm:w-auto"
-            (click)="eliminarHistoria()">
-            Eliminar
-          </button>
-
-          <!-- Derecha: Cancelar / Guardar -->
-          <div class="flex gap-2 w-full sm:w-auto">
-            <button type="button"
+            (click)="eliminarHistoria()" title="Eliminar definitivamente esta historia"> Eliminar </button>
+          <div class="flex gap-2 w-full sm:w-auto"> <button type="button"
               class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 w-full sm:w-auto"
-              (click)="closeEditarHistoriaDialog()">
-              Cancelar
-            </button>
-            <button type="submit"
-              class="px-4 py-2 rounded-lg bg-[#00a1a1] text-white text-sm hover:bg-[#008f8f] w-full sm:w-auto">
-              Guardar
-            </button>
-          </div>
+              (click)="closeEditarHistoriaDialog()" title="Cerrar sin guardar"> Cancelar </button> <button type="submit"
+              class="px-4 py-2 rounded-lg bg-[#00a1a1] text-white text-sm hover:bg-[#008f8f] w-full sm:w-auto"
+              title="Guardar cambios de estado"> Guardar </button> </div>
         </div>
-      </form>
+      </form> <!-- ================== COMENTARIOS DE LA HISTORIA ================== -->
+      <hr class="my-4 border-gray-200" />
+      <h4 class="text-base font-semibold text-gray-900 mb-2">Comentarios de la historia</h4>
+      <div class="text-sm text-gray-600 mb-2" *ngIf="cargandoComentarios"> Cargando comentarios… </div>
+      <div class="text-sm text-red-600 mb-2" *ngIf="errorComentarios"> {{ errorComentarios }} </div>
+      <!-- Formulario para agregar nuevo comentario -->
+      <form [formGroup]="comentarioForm" (ngSubmit)="agregarComentario()" class="flex flex-col sm:flex-row gap-2 mb-4">
+        <textarea formControlName="comentario" rows="2" placeholder="Escribe un comentario…"
+          class="flex-1 rounded-lg border px-3 py-2 text-sm"></textarea> <button type="submit"
+          [disabled]="comentarioForm.invalid"
+          class="px-4 py-2 rounded-lg bg-[#00a1a1] text-white text-sm hover:bg-[#008f8f] w-full sm:w-auto"> + Agregar
+        </button> </form> <!-- Tabla de comentarios -->
+      <div class="overflow-x-auto">
+        <table class="min-w-[700px] sm:min-w-full text-sm text-left text-gray-700">
+          <thead class="bg-[#f9fafb] text-xs uppercase text-gray-600">
+            <tr>
+              <th class="px-3 py-2 w-16">#</th>
+              <th class="px-3 py-2">Comentario</th>
+              <th class="px-3 py-2 w-40">Fecha</th>
+              <th class="px-3 py-2 w-40">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of comentarios" class="border-b">
+              <td class="px-3 py-2 align-top">{{ c.id_comentario }}</td> <!-- Vista / edición inline -->
+              <td class="px-3 py-2 align-top"> <ng-container
+                  *ngIf="comentarioEditando?.id_comentario !== c.id_comentario; else editBlock"> {{ c.comentario }}
+                </ng-container> <ng-template #editBlock>
+                  <form [formGroup]="comentarioEditForm" (ngSubmit)="guardarEdicionComentario()"
+                    class="flex flex-col gap-2"> <textarea formControlName="comentario" rows="2"
+                      class="w-full rounded-lg border px-3 py-2 text-sm"></textarea>
+                    <div class="flex gap-2"> <button type="button" class="px-3 py-1.5 rounded-lg border text-sm"
+                        (click)="cancelarEditarComentario()"> Cancelar </button> <button type="submit"
+                        [disabled]="comentarioEditForm.invalid"
+                        class="px-3 py-1.5 rounded-lg bg-[#00a1a1] text-white text-sm hover:bg-[#008f8f]"> Guardar
+                      </button> </div>
+                  </form>
+                </ng-template> </td>
+              <td class="px-3 py-2 align-top"> {{ c.fecha | date:'yyyy-MM-dd' }} </td>
+              <td class="px-3 py-2 align-top"> <ng-container
+                  *ngIf="comentarioEditando?.id_comentario !== c.id_comentario"> <button type="button"
+                    class="px-3 py-1.5 rounded-lg border text-sm transition w-full sm:w-auto bg-teal-600 text-white border-teal-600"
+                    (click)="iniciarEditarComentario(c)"> Editar </button> <button type="button"
+                    class="ml-2 px-3 py-1.5 rounded-lg border border-red-300 text-red-600 text-sm hover:bg-red-50"
+                    (click)="eliminarComentario(c)"> Eliminar </button> </ng-container> </td>
+            </tr>
+            <tr *ngIf="!cargandoComentarios && comentarios.length === 0">
+              <td colspan="4" class="px-3 py-6 text-center text-gray-500"> No hay comentarios para esta historia. </td>
+            </tr>
+          </tbody>
+        </table>
+      </div> <!-- ================== /COMENTARIOS ================== -->
     </div>
-  </ng-template>
-
-  <!-- ==================== /POPUP EDITAR HISTORIA ==================== -->
-
-  <!-- ============ Tabla de Historias de Usuario (mismo estilo que Actividades) ============ -->
+  </ng-template> <!-- ==================== /POPUP EDITAR HISTORIA ==================== -->
+  <!-- ============ Tabla de Historias de Usuario ============ -->
   <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden mb-6">
-    <!-- Franja superior -->
-    <div 
+    <div
       class="px-4 sm:px-6 py-3 sm:py-4 border-b bg-[#00a1a1] rounded-t-xl text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
       <div class="min-w-0">
-          <h3 class="font-semibold truncate">Historias de Usuario (Iniciativa {{ idIniciativa || '—' }})</h3>
-          <p class="text-[13px] opacity-90">Listado y estado de la historia de usuario por actividad</p>        
-      </div>
-      
-
-      <!-- Botón Nueva historia (alineado al estilo general) -->
-      <button type="button" (click)="openDialog(crearTpl)"
+        <h3 class="font-semibold truncate" title="Listado de historias de usuario para la iniciativa seleccionada">
+          Historias de Usuario (Iniciativa {{ idIniciativa || '—' }}) </h3>
+        <p class="text-[13px] opacity-90" title="Cada fila muestra nombre, estado, fechas y aporte al avance total">
+          Listado y estado de la historia de usuario por actividad </p>
+      </div> <!-- Botón Nueva historia --> <button type="button" (click)="openDialog()"
+        title="Crear una nueva historia de usuario" aria-label="Nueva historia"
         class="px-3 py-2 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-500 active:scale-[0.98] transition w-full sm:w-auto">
-         + Nueva historia
-      </button>
-
+        + Nueva historia </button>
     </div>
-
     <div class="p-4 overflow-x-auto">
-      <table class="min-w-[900px] sm:min-w-full text-sm text-left text-gray-700">
+      <table class="min-w-[900px] sm:min-w-full text-sm text-left text-gray-700"
+        aria-label="Tabla de historias de usuario">
         <thead class="bg-[#f9fafb] text-xs uppercase text-gray-600">
           <tr>
-            <th class="px-3 py-2 w-10">#</th>
-            <th class="px-3 py-2">Nombre</th>
-            <th class="px-3 py-2">Estado</th>
-            <th class="px-3 py-2">Inicio</th>
-            <th class="px-3 py-2">Fin</th>
-            <th class="px-3 py-2">% Peso</th>
-            <th class="px-3 py-2">Detalle</th>
+            <th class="px-3 py-2 w-10" title="Identificador interno de la historia">#</th>
+            <th class="px-3 py-2" title="Nombre de la historia de usuario">Nombre</th>
+            <th class="px-3 py-2" title="Estado actual de la historia">Estado</th>
+            <th class="px-3 py-2" title="Fecha de inicio">Inicio</th>
+            <th class="px-3 py-2" title="Fecha de fin">Fin</th>
+            <th class="px-3 py-2" title="Peso porcentual de esta historia respecto al total">% Peso</th>
+            <th class="px-3 py-2" title="Descripción breve o detalles adicionales">Detalle</th>
           </tr>
         </thead>
-
         <tbody>
           <tr *ngFor="let h of historias" (click)="openEditarHistoriaDialog(editarHistoriaTpl, h)"
-            class="border-b hover:bg-gray-50 cursor-pointer transition">
-
-            <td class="px-3 py-2 align-top">{{ h.id_historia }}</td>
-
-            <!-- Nombre -->
+            class="border-b hover:bg-gray-50 cursor-pointer transition"
+            [attr.title]="'Haz clic para ver/editar la historia «' + (h.nombre_historia || '—') + '»'">
+            <td class="px-3 py-2 align-top">{{ h.id_historia }}</td> <!-- Nombre -->
             <td class="px-3 py-2 align-top">
-              <div class="font-medium text-gray-800 truncate">{{ h.nombre_historia }}</div>
-              <div class="text-xs text-gray-500">{{ h.descripcion }}</div>
-            </td>
-
-            <!-- Estado con misma pill -->
-            <td class="px-3 py-2 align-top">
-              <span class="px-2 py-1 rounded-full border text-xs font-medium" [ngClass]="{
-                    'border-amber-400 text-amber-600': h.estado === 'Pendiente',
-                    'border-teal-500 text-teal-700': h.estado === 'Cerrada',
-                    'border-sky-400 text-sky-700': h.estado === 'Abierta'
-                  }">
-                {{ h.estado || '—' }}
-              </span>
-            </td>
-
-
+              <div class="font-medium text-gray-800 truncate" [attr.title]="h.nombre_historia"> {{ h.nombre_historia }}
+              </div>
+            </td> <!-- Estado con pill -->
+            <td class="px-3 py-2 align-top"> <span class="px-2 py-1 rounded-full border text-xs font-medium"
+                [ngClass]="{ 'border-amber-400 text-amber-600': h.estado === 'Pendiente', 'border-teal-500 text-teal-700': h.estado === 'Cerrada', 'border-sky-400 text-sky-700': h.estado === 'Abierta' }"
+                [attr.title]="'Estado de la historia: ' + (h.estado || '—')"> {{ h.estado || '—' }} </span> </td>
             <!-- Fechas -->
-            <td class="px-3 py-2 align-top whitespace-nowrap">{{ h.fecha_inicio | date:'yyyy-MM-dd' }}</td>
-            <td class="px-3 py-2 align-top whitespace-nowrap">{{ h.fecha_fin | date:'yyyy-MM-dd' }}</td>
-
-            <!-- Peso y Aporte -->
-            <td class="px-3 py-2 align-top">{{ h.peso_por_historia }}</td>
-            <td class="px-3 py-2 align-top">{{ h.descripcion }}</td>
+            <td class="px-3 py-2 align-top whitespace-nowrap"
+              [attr.title]="'Inicio: ' + (h.fecha_inicio | date:'yyyy-MM-dd')"> {{ h.fecha_inicio | date:'yyyy-MM-dd' }}
+            </td>
+            <td class="px-3 py-2 align-top whitespace-nowrap"
+              [attr.title]="'Fin: ' + (h.fecha_fin | date:'yyyy-MM-dd')"> {{ h.fecha_fin | date:'yyyy-MM-dd' }} </td>
+            <!-- Peso -->
+            <td class="px-3 py-2 align-top" [attr.title]="'Peso asignado: ' + (h.peso_por_historia ?? 0) + '%'"> {{
+              h.peso_por_historia }} </td> <!-- Detalle -->
+            <td class="px-3 py-2 align-top" [attr.title]="h.descripcion || 'Sin descripción'"> {{ h.descripcion }} </td>
           </tr>
-
           <tr *ngIf="historias.length === 0">
-            <td colspan="8" class="px-3 py-6 text-center text-gray-500">
-              No hay historias registradas para esta iniciativa.
+            <td colspan="7" class="px-3 py-6 text-center text-gray-500"
+              title="No hay historias cargadas para esta iniciativa"> No hay historias registradas para esta iniciativa.
             </td>
           </tr>
         </tbody>
       </table>
     </div>
   </div>
-
-
 </div>

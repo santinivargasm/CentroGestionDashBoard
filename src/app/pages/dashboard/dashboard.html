@@ -8,22 +8,22 @@
     max-width: none !important;
     max-height: none !important;
   }
-  /* Evita que flex/grid “estire” las tarjetas por contenido interno */
   .cg-card { min-height: 0; }
 </style>
 
 <div class="rounded-md shadow-md p-4 sm:p-6 lg:p-10 mb-4 bg-gradient-to-br from-[#ffffff] to-[#008f8f] overflow-x-hidden">
   <div class="p-6">
 
-    <!-- Cambiar correo (ACTOR) + NUEVO: Ver (VIEWER) -->
     <div class="flex flex-col sm:flex-row sm:justify-end gap-2 items-stretch sm:items-center mb-2">
       <ng-container *ngIf="subordinados.length > 0">
         <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
-          <label class="text-xs text-gray-700">Ver:</label>
+          <label class="text-xs text-gray-700" title="Filtra la vista por colaborador o 'Yo'">Ver:</label>
           <select
             class="px-2 py-2 border rounded-lg text-sm w-full sm:w-auto max-w-full"
             [ngModel]="viewerCorreo"
             (ngModelChange)="onChangeViewer($event)"
+            title="Selecciona el colaborador que quieres visualizar"
+            aria-label="Selector de colaborador para ver"
           >
             <option *ngFor="let s of subordinados" [ngValue]="s.correo_electronico">
               {{ s.nombre }} • {{ s.correo_electronico }}
@@ -35,128 +35,156 @@
       <button
         (click)="abrirSelectorCorreo()"
         class="px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white hover:bg-gray-50 w-full sm:w-auto"
+        title="Cambiar el correo asociado a tu sesión actual"
+        aria-label="Cambiar correo de sesión"
       >
         Cambiar correo
       </button>
     </div>
 
-    <!-- Datos del colaborador (VIEWER) -->
-    <div class="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-6">
+    <!-- Datos del colaborador -->
+    <div class="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-6"
+         title="Resumen del colaborador actualmente seleccionado">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <h2 class="text-xl font-semibold text-gray-800">Datos del colaborador</h2>
+        <h2 class="text-xl font-semibold text-gray-800"
+            title="Información básica del colaborador">Datos del colaborador: {{ nombreUsuario }}</h2>
+            <p>Rol del usuario: {{ rolUsuario }}</p>
+
         <button
           (click)="abrirModalDetalles()"
           class="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg shadow hover:bg-teal-700 active:scale-[0.98] transition w-full sm:w-auto"
+          title="Ver más detalles del colaborador"
+          aria-label="Abrir detalles del colaborador"
         >
           Detalles
         </button>
       </div>
 
-      <!-- ojo con truncate: agrega min-w-0 para que funcione en móvil -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-10 text-sm text-gray-700">
-        <p class="flex items-center min-w-0">
+        <p class="flex items-center min-w-0" title="Nombre completo del colaborador">
           <span class="font-semibold w-28 sm:w-36">Nombre:</span>
-          <span class="truncate">{{ colaborador?.nombre || '—' }}</span>
+          <span class="truncate" [attr.title]="colaborador?.nombre || '—'">{{ colaborador?.nombre || '—' }}</span>
         </p>
-        <p class="flex items-center min-w-0">
+        <p class="flex items-center min-w-0" title="Correo electrónico del colaborador">
           <span class="font-semibold w-28 sm:w-36">Correo:</span>
-          <span class="truncate">{{ colaborador?.correo_electronico || '—' }}</span>
+          <span class="truncate" [attr.title]="colaborador?.correo_electronico || '—'">{{ colaborador?.correo_electronico || '—' }}</span>
         </p>
       </div>
     </div>
 
-    <!-- Análisis de iniciativas (VIEWER) -->
-    <div class="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-6">
-      <h2 class="text-xl font-semibold text-gray-800 mb-4">Análisis de iniciativas</h2>
+    <!-- Análisis de iniciativas -->
+    <div class="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-6"
+         title="Distribución de tiempo por iniciativa y métricas clave">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4"
+          title="Métricas y gráficos de iniciativas">Análisis de iniciativas</h2>
 
-      <!-- 12 columnas en ≥sm; 1 columna en móvil -->
       <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
 
-        <!-- Donut % por actividad (SEMANA) -->
+        <!-- Donut SEM -->
         <div class="col-span-1 sm:col-span-12 md:col-span-4">
-          <div class="rounded-xl border border-gray-200 p-3 cg-card">
-            <p class="font-semibold text-sm mb-2">Distribución por iniciativa (min/sem)</p>
+          <div class="rounded-xl border border-gray-200 p-3 cg-card"
+               title="Tiempo semanal por iniciativa">
+            <p class="font-semibold text-sm mb-2"
+               title="Porcentaje de minutos por semana por iniciativa">Distribución por iniciativa (min/sem)</p>
             <div class="cg-box h-[180px]">
-              <canvas id="cgChartDistSem"></canvas>
+              <canvas id="cgChartDistSem" aria-label="Gráfico donut semanal por iniciativa" role="img"></canvas>
             </div>
           </div>
         </div>
 
-        <!-- Donut % por actividad (MES) -->
+        <!-- Donut MES -->
         <div class="col-span-1 sm:col-span-12 md:col-span-4">
-          <div class="rounded-xl border border-gray-200 p-3 cg-card">
-            <p class="font-semibold text-sm mb-2">Distribución por iniciativa (min/mes)</p>
+          <div class="rounded-xl border border-gray-200 p-3 cg-card"
+               title="Tiempo mensual por iniciativa">
+            <p class="font-semibold text-sm mb-2"
+               title="Porcentaje de minutos por mes por iniciativa">Distribución por iniciativa (min/mes)</p>
             <div class="cg-box h-[180px]">
-              <canvas id="cgChartDistMes"></canvas>
+              <canvas id="cgChartDistMes" aria-label="Gráfico donut mensual por iniciativa" role="img"></canvas>
             </div>
           </div>
         </div>
 
         <!-- Pareto -->
         <div class="col-span-1 sm:col-span-12 md:col-span-4">
-          <div class="rounded-xl border border-gray-200 p-3 cg-card">
-            <p class="font-semibold text-sm mb-2">Pareto por iniciativa (min/sem) • Umbral 44h</p>
+          <div class="rounded-xl border border-gray-200 p-3 cg-card"
+               title="Comparación de minutos semanales y umbral objetivo">
+            <p class="font-semibold text-sm mb-2"
+               [attr.title]="'Suma de minutos/sem por iniciativa. Umbral = ' + thresholdHoras + 'h'">
+               Pareto por iniciativa (min/sem) • Umbral 44h
+            </p>
             <div class="cg-box h-[320px]">
-              <canvas id="cgChartPareto"></canvas>
+              <canvas id="cgChartPareto" aria-label="Gráfico pareto de minutos por semana" role="img"></canvas>
             </div>
           </div>
         </div>
 
         <!-- Por tipo -->
         <div class="col-span-1 sm:col-span-12 md:col-span-4">
-          <div class="rounded-xl border border-gray-200 p-3 cg-card">
-            <p class="font-semibold text-sm mb-2">Por tipo de actividad</p>
+          <div class="rounded-xl border border-gray-200 p-3 cg-card"
+               title="Distribución de minutos por tipo de actividad">
+            <p class="font-semibold text-sm mb-2"
+               title="Minutos por semana agrupados por tipo de actividad">Por tipo de actividad</p>
             <div class="cg-box h-[220px]">
-              <canvas id="cgChartTipo"></canvas>
+              <canvas id="cgChartTipo" aria-label="Gráfico por tipo de actividad" role="img"></canvas>
             </div>
           </div>
         </div>
 
         <!-- Por periodicidad -->
         <div class="col-span-1 sm:col-span-12 md:col-span-4">
-          <div class="rounded-xl border border-gray-200 p-3 cg-card">
-            <p class="font-semibold text-sm mb-2">Por periodicidad</p>
+          <div class="rounded-xl border border-gray-200 p-3 cg-card"
+               title="Distribución por periodicidad (diaria, semanal, mensual, etc.)">
+            <p class="font-semibold text-sm mb-2"
+               title="Minutos por semana agrupados por periodicidad">Por periodicidad</p>
             <div class="cg-box h-[220px]">
-              <canvas id="cgChartPer"></canvas>
+              <canvas id="cgChartPer" aria-label="Gráfico de minutos por periodicidad" role="img"></canvas>
             </div>
           </div>
         </div>
 
-        <!-- Herramientas (fila nueva) -->
+        <!-- Herramientas -->
         <div class="col-span-1 sm:col-span-12">
-          <div class="rounded-xl border border-gray-200 p-3 cg-card">
-            <p class="font-semibold text-sm mb-2">Uso por herramienta (min/sem)</p>
+          <div class="rounded-xl border border-gray-200 p-3 cg-card"
+               title="Minutos por herramienta utilizada">
+            <p class="font-semibold text-sm mb-2"
+               title="Uso semanal por herramienta principal">Uso por herramienta (min/sem)</p>
             <div class="cg-box h-[240px]">
-              <canvas id="cgChartHerr"></canvas>
+              <canvas id="cgChartHerr" aria-label="Gráfico de uso por herramienta" role="img"></canvas>
             </div>
           </div>
         </div>
 
         <!-- Top candidatos -->
         <div class="col-span-1 sm:col-span-12">
-          <div class="rounded-xl border border-gray-200 p-4">
-            <p class="font-semibold text-sm mb-3">Top candidatos para automatizar (impacto = min/sem × score)</p>
+          <div class="rounded-xl border border-gray-200 p-4"
+               title="Ranking de iniciativas candidatas a automatizar según impacto">
+            <p class="font-semibold text-sm mb-3"
+               title="Impacto = minutos por semana × score estimado">Top candidatos para automatizar (impacto = min/sem × score)</p>
             <div class="overflow-x-auto">
-              <table class="min-w-full text-sm text-left text-gray-700">
+              <table class="min-w-full text-sm text-left text-gray-700" aria-label="Tabla top candidatos a automatizar">
                 <thead class="bg-gray-50 text-xs uppercase text-gray-600">
                   <tr>
-                    <th class="px-3 py-2">#</th>
-                    <th class="px-3 py-2">Iniciativa</th>
-                    <th class="px-3 py-2">Min/sem</th>
-                    <th class="px-3 py-2">Score (%)</th>
-                    <th class="px-3 py-2">Impacto</th>
+                    <th class="px-3 py-2" title="Posición en el ranking">#</th>
+                    <th class="px-3 py-2" title="Nombre de la iniciativa">Iniciativa</th>
+                    <th class="px-3 py-2" title="Minutos por semana">Min/sem</th>
+                    <th class="px-3 py-2" title="Score de automatización estimado">Score (%)</th>
+                    <th class="px-3 py-2" title="Minutos × score">Impacto</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let r of topCandidatos; let i = index" class="border-b">
+                  <tr *ngFor="let r of topCandidatos; let i = index" class="border-b"
+                      [attr.title]="'Impacto estimado para «' + r.nombre + '»'">
                     <td class="px-3 py-2">{{ i + 1 }}</td>
-                    <td class="px-3 py-2 font-medium">{{ r.nombre }}</td>
-                    <td class="px-3 py-2">{{ r.minutos }}</td>
-                    <td class="px-3 py-2">{{ r.score }}</td>
-                    <td class="px-3 py-2">{{ r.impacto | number:'1.0-0' }}</td>
+                    <td class="px-3 py-2 font-medium" [attr.title]="r.nombre">{{ r.nombre }}</td>
+                    <td class="px-3 py-2" [attr.title]="r.minutos + ' minutos/sem'">{{ r.minutos }}</td>
+                    <td class="px-3 py-2" [attr.title]="r.score + '%'">{{ r.score }}</td>
+                    <td class="px-3 py-2" [attr.title]="(r.impacto | number:'1.0-0') + ' puntos'">{{ r.impacto | number:'1.0-0' }}</td>
                   </tr>
                   <tr *ngIf="topCandidatos.length === 0">
-                    <td colspan="5" class="text-center py-3 text-gray-500">Sin datos suficientes.</td>
+                    <td colspan="5" class="text-center py-3 text-gray-500"
+                        title="Aún no hay datos suficientes para calcular candidatos">
+                      Sin datos suficientes.
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -167,31 +195,35 @@
       </div>
     </div>
 
-    <!-- Modal seleccionar correo (ACTOR) -->
+    <!-- Modal seleccionar correo -->
     <div *ngIf="mostrarSelectorCorreo" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-[520px] p-6">
-        <h3 class="text-lg font-semibold mb-4">Selecciona el colaborador</h3>
+        <h3 class="text-lg font-semibold mb-4" title="Elige el colaborador cuya información quieres usar en tu sesión">Selecciona el colaborador</h3>
 
-        <label class="block text-sm mb-2">Correo del colaborador / jefe</label>
+        <label class="block text-sm mb-2" title="Lista de correos habilitados">Correo del colaborador / jefe</label>
         <select
           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
           [(ngModel)]="correoSeleccionado"
+          title="Selecciona un correo y confirma"
+          aria-label="Selector de correo para iniciar sesión"
         >
           <option value="" disabled>— Selecciona —</option>
-          <!-- 👉 ahora vienen colaboradores y jefes -->
           <option *ngFor="let c of opcionesColaborador" [value]="c.correo">
             {{ c.etiqueta ? (c.etiqueta + ' • ' + c.correo) : c.correo }} ({{ c.rol }})
           </option>
         </select>
 
         <div class="mt-5 flex justify-end gap-2">
-          <button (click)="cancelarSelector()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50">
+          <button (click)="cancelarSelector()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50"
+                  title="Cerrar sin cambios">
             Cancelar
           </button>
           <button
             (click)="confirmarSelector()"
             class="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-700"
             [disabled]="!correoSeleccionado"
+            title="Aplicar el correo seleccionado"
+            aria-label="Confirmar selección de correo"
           >
             Confirmar
           </button>
@@ -199,9 +231,10 @@
       </div>
     </div>
 
-    <!-- Modal detalles colaborador (VIEWER) -->
+    <!-- Modal detalles colaborador -->
     <div *ngIf="mostrarModalColaborador" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div class="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-[90vw] sm:w-[480px] max-h-[90vh] flex flex-col justify-between">
+      <div class="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-[90vw] sm:w-[480px] max-h-[90vh] flex flex-col justify-between"
+           title="Detalle completo del colaborador">
         <div class="mb-3 text-center sm:text-left">
           <h3 class="text-base sm:text-lg font-semibold mb-2">Detalles del colaborador</h3>
         </div>
@@ -223,12 +256,13 @@
           <button
             (click)="cerrarModalDetalles()"
             class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm font-medium w-full sm:w-auto"
+            title="Cerrar ventana de detalles"
+            aria-label="Cerrar detalles del colaborador"
           >
             Cerrar
           </button>
         </div>
       </div>
     </div>
-
   </div>
 </div>

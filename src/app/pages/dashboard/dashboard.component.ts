@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { Subscription } from 'rxjs';
-
 import { EmailSessionService } from '../../core/email-session.service';
 
 type Colaborador = {
@@ -47,11 +46,21 @@ type Actividad = {
   correo_electronico_buckup?: string;
 };
 
-/** Opción para el selector (colaborador + jefes) */
 type OpcionCorreo = {
   correo: string;
   etiqueta: string;
   rol: string; // 'colaborador' | 'jefe1' | 'jefe2'
+};
+
+// ==== EasyAuth (/._auth/me) ====
+type EasyAuthClaim = { typ: string; val: string };
+type EasyAuthEntry = {
+  user_id: string;
+  provider_name: string;
+  user_claims: EasyAuthClaim[];
+  access_token?: string;
+  id_token?: string;
+  expires_on?: string;
 };
 
 @Component({
@@ -63,6 +72,7 @@ type OpcionCorreo = {
 export class DashboardComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private session = inject(EmailSessionService);
+
   private API = 'https://hubai.azurewebsites.net';
   private subs: Subscription[] = [];
 
@@ -71,7 +81,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   correoSeleccionado = '';
 
   // actor vs viewer
-  private get actorCorreo(): string { return (this.session.getEmail() || '').trim().toLowerCase(); }
+  private get actorCorreo(): string {
+    return (this.session.getEmail() || '').trim().toLowerCase();
+  }
   viewerCorreo = '';
 
   // Datos
@@ -79,13 +91,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   colaborador: Colaborador | null = null;
   iniciativas: Iniciativa[] = [];
   actividades: Actividad[] = [];
-
   subordinados: Array<{ nombre: string; correo_electronico: string }> = [];
+
+  // === Nuevo: user_id y nombre expuestos desde /.auth/me ===
+  public userId: string = '';
+  public nombreUsuario: string = '';
+  public rolUsuario: string = '';
 
   // Negocio
   private WORKDAYS_PER_WEEK = 5;
   private WEEKS_PER_MONTH = 4.33;
-
   thresholdHoras = 44;
   get thresholdMinutos(): number { return this.thresholdHoras * 60; }
   get thresholdMensualMin(): number { return Math.round(this.thresholdMinutos * this.WEEKS_PER_MONTH); }
@@ -116,15 +131,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private chartRefs: Record<string, any> = {};
 
   // Paleta
-  private PALETTE = {
-    teal: '#0D9488',
-    tealDark: '#0F766E',
-    tealLight: '#5EEAD4',
-    amber: '#F59E0B',
-    gray900: '#111827',
-    grid: '#E5E7EB'
-  };
-
+  private PALETTE = { teal: '#0D9488', tealDark: '#0F766E', tealLight: '#5EEAD4', amber: '#F59E0B', gray900: '#111827', grid: '#E5E7EB' };
   private colorList(n: number): string[] {
     const base = [this.PALETTE.teal, this.PALETTE.amber, this.PALETTE.tealDark, '#10B981', '#14B8A6', '#0EA5E9', '#F59E0B'];
     const out: string[] = [];
@@ -133,59 +140,58 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
-    this.subs.push(
-      this.session.emailChanges().subscribe((correo: string | null) => {
-        if (correo) {
-          this.mostrarSelectorCorreo = false;
-          this.viewerCorreo = (correo || '').trim().toLowerCase();
-          this.cargarSubordinadosDelActor();
-          this.cargarColaborador(this.viewerCorreo);
-          this.cargarIniciativas(this.viewerCorreo);
-        } else {
-          this.mostrarSelectorCorreo = true;
-          this.cargarOpcionesColaborador();
-        }
-      })
-    );
-
-    const actual = this.session.getEmail();
-    if (actual) {
-      this.viewerCorreo = (actual || '').trim().toLowerCase();
-      this.cargarSubordinadosDelActor();
-      this.cargarColaborador(this.viewerCorreo);
-      this.cargarIniciativas(this.viewerCorreo);
-    } else {
-      this.mostrarSelectorCorreo = true;
-      this.cargarOpcionesColaborador();
-    }
-
     try {
+      // Hidratar los datos del usuario desde el backend (get email, name, role)
+      await this.session.hydrateFromWhoAmI();
+
+      // Obtener el email y rol del usuario desde la sesión
+      const email = this.session.getEmail() || '';  // Obtén el correo electrónico desde la sesión
+      const role = this.session.getRole(); // Obtén el rol desde la sesión
+
+      console.log('Email:', email);  // Muestra el correo del usuario
+      console.log('Role:', role);    // Muestra el rol del usuario
+
+      // Llamar al backend para obtener el rol usando el correo electrónico
+      this.obtenerRolDelBackend(email);
+
+      // Continuar con la lógica existente
+      this.subs.push(
+        this.session.emailChanges().subscribe((correo: string | null) => {
+          if (correo) {
+            this.mostrarSelectorCorreo = false;
+            this.viewerCorreo = (correo || '').trim().toLowerCase();
+            this.cargarSubordinadosDelActor();
+            this.cargarColaborador(this.viewerCorreo);
+            this.cargarIniciativas(this.viewerCorreo);
+          } else {
+            this.mostrarSelectorCorreo = true;
+            this.cargarOpcionesColaborador();
+          }
+        })
+      );
+
+      await this.cargarEasyAuthFront();
+
+      const actual = this.session.getEmail();
+      if (actual) {
+        this.viewerCorreo = (actual || '').trim().toLowerCase();
+        this.cargarSubordinadosDelActor();
+        this.cargarColaborador(this.viewerCorreo);
+        this.cargarIniciativas(this.viewerCorreo);
+      } else {
+        this.mostrarSelectorCorreo = true;
+        this.cargarOpcionesColaborador();
+      }
+
+      // Cargar el gráfico y otras funcionalidades
       const mod = await import('chart.js/auto');
       this.ChartLib = (mod as any).default || (mod as any);
-
-      const Chart = this.ChartLib;
-      // Estilo visual
-      Chart.defaults.font.family =
-        'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial';
-      Chart.defaults.color = this.PALETTE.gray900;
-      Chart.defaults.borderColor = this.PALETTE.grid;
-      Chart.defaults.scale.grid.color = this.PALETTE.grid;
-      Chart.defaults.plugins.legend.labels.usePointStyle = true;
-      Chart.defaults.plugins.legend.labels.pointStyle = 'rectRounded';
-      Chart.defaults.plugins.tooltip.backgroundColor = this.PALETTE.gray900;
-      Chart.defaults.plugins.tooltip.titleColor = '#F9FAFB';
-      Chart.defaults.plugins.tooltip.bodyColor = '#F3F4F6';
-
-      // 🔒 Nada responsivo a nivel global
-      Chart.defaults.responsive = false;
-      Chart.defaults.maintainAspectRatio = false;
-      Chart.defaults.animation = false;
-
       this.recomputeAndRender();
-    } catch (e) {
-      console.warn('Chart.js no está instalado. npm i chart.js', e);
+    } catch (error) {
+      console.error('Error al hidratar los datos del usuario', error);
     }
   }
+
 
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
@@ -193,10 +199,77 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.resizeTimer) clearTimeout(this.resizeTimer);
   }
 
+  private async cargarEasyAuthFront(): Promise<void> {
+    try {
+      const me = await this.http.get<EasyAuthEntry[]>('/.auth/me', { withCredentials: true }).toPromise();
+      const entry = me?.[0];
+      if (!entry) return;
+
+      // user_id directo del JSON
+      this.userId = entry.user_id || '';
+
+      // Claims en Map
+      const claims = new Map(entry.user_claims?.map(c => [c.typ, c.val]) || []);
+
+      // Email preferido (normalizado a minúsculas)
+      const correo = (
+        claims.get('preferred_username') ||
+        claims.get('http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress') ||
+        ''
+      ).toLowerCase();
+
+      // Nombre del usuario
+      this.nombreUsuario = claims.get('name') || '';
+
+      // ⬇️⬇️⬇️ CAMBIO CLAVE: SIEMPRE sobreescribe la sesión con el login ⬇️⬇️⬇️
+      this.session.setUserId(this.userId || correo);
+      this.session.setNombre(this.nombreUsuario || correo);
+      if (correo) {
+        this.session.setEmail(correo);     // <-- ya no es condicional
+        this.viewerCorreo = correo;        // opcional; la suscripción igual lo setea
+      }
+
+      console.log('[EasyAuth]', {
+        userId: this.userId,
+        correo,
+        nombre: this.nombreUsuario,
+        provider: entry.provider_name
+      });
+    } catch (err) {
+      console.warn('No se pudo leer /.auth/me (¿no logueado todavía?):', err);
+    }
+  }
+
+  private obtenerRolDelBackend(correo: string): void {
+    if (!correo) return;
+
+    this.http.get<{ ok: boolean; correo?: string; rol?: string | null }>(`${this.API}/api/rol/${encodeURIComponent(correo)}`).subscribe({
+      next: (response) => {
+        console.log('Respuesta del backend:', response);  // Verifica la respuesta del backend
+        if (response.ok) {
+          const rol: string | null = response.rol ?? null;  // Si rol es undefined, asigna null
+          console.log('Rol obtenido:', rol);  // Verifica el rol obtenido
+          this.session.setRole(rol);  // Guarda el rol en la sesión
+          if (rol === 'administrador') {
+            console.log('Usuario es administrador');
+          }
+        } else {
+          console.error('Error al obtener el rol');
+        }
+      },
+      error: (err) => {
+        console.error('Error al hacer la solicitud del rol', err);
+      }
+    });
+
+  }
+
+
+
+
   // ============ RESIZE (repinta con debounce) ============
   private resizeTimer: any = null;
-  @HostListener('window:resize')
-  _onWindowResize(): void {
+  @HostListener('window:resize') _onWindowResize(): void {
     if (!this.ChartLib) return;
     if (this.resizeTimer) clearTimeout(this.resizeTimer);
     this.resizeTimer = setTimeout(() => this.renderCharts(), 180);
@@ -228,7 +301,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private cargarSubordinadosDelActor(): void {
     const actor = this.actorCorreo;
-    if (!actor) { this.subordinados = []; return; }
+    if (!actor) {
+      this.subordinados = [];
+      return;
+    }
     this.http
       .get<Array<{ nombre: string; correo_electronico: string }>>(
         `${this.API}/api/subordinados_de/${encodeURIComponent(actor)}`
@@ -252,7 +328,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private cargarIniciativas(correo: string): void {
     this.http.get<Iniciativa[]>(`${this.API}/api/iniciativas_por_correo/${encodeURIComponent(correo)}`).subscribe({
-      next: rows => { this.iniciativas = rows || []; this.recomputeAndRender(); },
+      next: rows => {
+        this.iniciativas = rows || [];
+        this.recomputeAndRender();
+      },
       error: err => console.error('Error obteniendo iniciativas:', err)
     });
   }
@@ -265,7 +344,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.cargarIniciativas(this.viewerCorreo);
   }
 
-  // ===== Frecuencias / helpers =====
   private weekFactor(p: string): number {
     const v = (p || '').toLowerCase().trim();
     if (/diar/i.test(v)) return this.WORKDAYS_PER_WEEK;
@@ -273,12 +351,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (/quincenal/.test(v)) return 0.5;
     if (/mensual|month/.test(v)) return 1 / this.WEEKS_PER_MONTH;
     if (/bimestral/.test(v)) return 1 / (2 * this.WEEKS_PER_MONTH);
-    if (/trimestral/.test(v)) return 1 / (3 * this.WEEKS_PER_MONTH);
-    if (/semestral/.test(v)) return 1 / (6 * this.WEEKS_PER_MONTH);
+    if (/trimestral/.test(v)) return 1 / 3;
+    if (/semestral/.test(v)) return 1 / 6;
     if (/anual|a\u00f1o/.test(v)) return 1 / 52;
     if (/ad.?hoc|puntual|eventual/.test(v)) return 0;
     return 0;
   }
+
   private monthFactor(p: string): number {
     const v = (p || '').toLowerCase().trim();
     if (/diar/i.test(v)) return this.WORKDAYS_PER_WEEK * this.WEEKS_PER_MONTH;
@@ -292,6 +371,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (/ad.?hoc|puntual|eventual/.test(v)) return 0;
     return 0;
   }
+
   private isActiva(estado: string): boolean {
     const v = (estado || '').toLowerCase().trim();
     if (/finalizad|cerrad|completad|cancelad/.test(v)) return false;
@@ -309,9 +389,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const activeIds = new Set(activas.map(x => x.id_iniciativa));
     const actsValid = (this.actividades || []).filter(a => a.id_iniciativa && activeIds.has(Number(a.id_iniciativa)));
 
-    // desde actividades (por iniciativa)
     const semByInitActs = new Map<string, number>();
     const mesByInitActs = new Map<string, number>();
+
     for (const a of actsValid) {
       const min = Number(a.carga_minutos) || 0;
       const w = Math.round(min * this.weekFactor(a.periodicidad));
@@ -320,9 +400,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       semByInitActs.set(inicName, (semByInitActs.get(inicName) || 0) + w);
       mesByInitActs.set(inicName, (mesByInitActs.get(inicName) || 0) + m);
     }
+
     const totalSemActs = Array.from(semByInitActs.values()).reduce((a, b) => a + b, 0);
     const totalMesActs = Array.from(mesByInitActs.values()).reduce((a, b) => a + b, 0);
-
     const useActivities = totalSemActs > 0 || totalMesActs > 0;
 
     const tipoAgg = new Map<string, number>();
@@ -336,32 +416,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
       this.distSemLabels = [...semByInitActs.keys()];
       this.distSemValues = this.distSemLabels.map(k => semByInitActs.get(k) || 0);
+
       this.distMesLabels = [...mesByInitActs.keys()];
       this.distMesValues = this.distMesLabels.map(k => mesByInitActs.get(k) || 0);
 
-      paretoPairs = this.distSemLabels.map((n, i) => ({ nombre: n, minutos: this.distSemValues[i] }))
+      paretoPairs = this.distSemLabels
+        .map((n, i) => ({ nombre: n, minutos: this.distSemValues[i] }))
         .sort((a, b) => b.minutos - a.minutos);
 
       for (const a of actsValid) {
         const val = Math.round((Number(a.carga_minutos) || 0) * this.weekFactor(a.periodicidad));
         const t = (a.tipo_actividad || 'Sin tipo').trim();
         tipoAgg.set(t, (tipoAgg.get(t) || 0) + val);
+
         const p = (a.periodicidad || '—').trim();
         perAgg.set(p, (perAgg.get(p) || 0) + val);
+
         const tools = (a.herramientas || '').split(/[,;|/]/).map(x => x.trim()).filter(Boolean);
         if (tools.length === 0) herrAgg.set('Sin especificar', (herrAgg.get('Sin especificar') || 0) + val);
         else for (const h of tools) herrAgg.set(h, (herrAgg.get(h) || 0) + val);
       }
 
-      // Score para top candidatos
       const score = (it: Iniciativa): number => {
         const freqWeight = (s: string): number => {
           const v = (s || '').toLowerCase();
           const map: Record<string, number> = {
-            'diaria': 1.0, 'diario': 1.0, 'semanal': 0.85, 'weekly': 0.85,
-            'quincenal': 0.75, 'mensual': 0.65, 'bimestral': 0.55,
-            'trimestral': 0.5, 'semestral': 0.45, 'anual': 0.35,
-            'ad-hoc': 0.3, 'puntual': 0.3, 'eventual': 0.3
+            'diaria': 1.0, 'diario': 1.0,
+            'semanal': 0.85, 'weekly': 0.85,
+            'quincenal': 0.75, 'mensual': 0.65, 'bimestral': 0.55, 'trimestral': 0.5,
+            'semestral': 0.45, 'anual': 0.35, 'ad-hoc': 0.3, 'puntual': 0.3, 'eventual': 0.3
           };
           return map[v] ?? 0.6;
         };
@@ -397,8 +480,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
         const sc = inic ? score(inic) : 60;
         return { nombre: p.nombre, minutos: p.minutos, score: sc, impacto: p.minutos * (sc / 100) };
       }).sort((a, b) => b.impacto - a.impacto);
-      this.topCandidatos = candidates.slice(0, 5);
 
+      this.topCandidatos = candidates.slice(0, 5);
       this.paretoLabels = paretoPairs.map(x => x.nombre);
       this.paretoMinutos = paretoPairs.map(x => x.minutos);
       this.tipoLabels = [...tipoAgg.keys()];
@@ -407,9 +490,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.perMinutos = this.perLabels.map(k => perAgg.get(k) || 0);
       this.herrLabels = [...herrAgg.keys()];
       this.herrMinutos = this.herrLabels.map(k => herrAgg.get(k) || 0);
-
     } else {
-      // Fallback con iniciativas
       const semanalByInit = activas.map(it => ({
         nombre: it.nombre_iniciativa || `ID ${it.id_iniciativa}`,
         minutos: Math.round((Number(it.carga_minutos) || 0) * this.weekFactor(it.periodicidad))
@@ -427,29 +508,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.distMesLabels = mensualByInitPairs.map(x => x.nombre);
       this.distMesValues = mensualByInitPairs.map(x => x.minutos);
 
-      const paretoPairs = [...semanalByInit].sort((a, b) => b.minutos - a.minutos);
+      const tipoAgg2 = new Map<string, number>();
+      const perAgg2 = new Map<string, number>();
+      const herrAgg2 = new Map<string, number>();
 
-      const tipoAgg = new Map<string, number>();
-      const perAgg  = new Map<string, number>();
-      const herrAgg = new Map<string, number>();
       for (const it of activas) {
         const val = Math.round((Number(it.carga_minutos) || 0) * this.weekFactor(it.periodicidad));
         const t = (it.tipo_actividad || 'Sin tipo').trim();
-        tipoAgg.set(t, (tipoAgg.get(t) || 0) + val);
+        tipoAgg2.set(t, (tipoAgg2.get(t) || 0) + val);
+
         const p = (it.periodicidad || '—').trim();
-        perAgg.set(p, (perAgg.get(p) || 0) + val);
+        perAgg2.set(p, (perAgg2.get(p) || 0) + val);
+
         const tools = (it.herramientas || '').split(/[,;|/]/).map(x => x.trim()).filter(Boolean);
-        if (tools.length === 0) herrAgg.set('Sin especificar', (herrAgg.get('Sin especificar') || 0) + val);
-        else for (const h of tools) herrAgg.set(h, (herrAgg.get(h) || 0) + val);
+        if (tools.length === 0) herrAgg2.set('Sin especificar', (herrAgg2.get('Sin especificar') || 0) + val);
+        else for (const h of tools) herrAgg2.set(h, (herrAgg2.get(h) || 0) + val);
       }
 
       const score = (it: Iniciativa): number => {
         const v = (it.periodicidad || '').toLowerCase();
         const map: Record<string, number> = {
-          'diaria': 1.0, 'diario': 1.0, 'semanal': 0.85, 'weekly': 0.85,
-          'quincenal': 0.75, 'mensual': 0.65, 'bimestral': 0.55,
-          'trimestral': 0.5, 'semestral': 0.45, 'anual': 0.35,
-          'ad-hoc': 0.3, 'puntual': 0.3, 'eventual': 0.3
+          'diaria': 1.0, 'diario': 1.0, 'semanal': 0.85, 'weekly': 0.85, 'quincenal': 0.75, 'mensual': 0.65,
+          'bimestral': 0.55, 'trimestral': 0.5, 'semestral': 0.45, 'anual': 0.35, 'ad-hoc': 0.3, 'puntual': 0.3, 'eventual': 0.3
         };
         const freq = map[v] ?? 0.6;
         const t = (it.tipo_actividad || '').toLowerCase();
@@ -477,20 +557,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
         const sc = score(it);
         return { nombre: it.nombre_iniciativa || `ID ${it.id_iniciativa}`, minutos, score: sc, impacto: minutos * (sc / 100) };
       }).sort((a, b) => b.impacto - a.impacto);
-      this.topCandidatos = candidates.slice(0, 5);
 
+      this.topCandidatos = candidates.slice(0, 5);
       this.paretoLabels = candidates.map(x => x.nombre);
       this.paretoMinutos = candidates.map(x => x.minutos);
-      this.tipoLabels = [...tipoAgg.keys()];
-      this.tipoMinutos = this.tipoLabels.map(k => tipoAgg.get(k) || 0);
-      this.perLabels = [...perAgg.keys()];
-      this.perMinutos = this.perLabels.map(k => perAgg.get(k) || 0);
-      this.herrLabels = [...herrAgg.keys()];
-      this.herrMinutos = this.herrLabels.map(k => herrAgg.get(k) || 0);
+      this.tipoLabels = [...tipoAgg2.keys()];
+      this.tipoMinutos = this.tipoLabels.map(k => tipoAgg2.get(k) || 0);
+      this.perLabels = [...perAgg2.keys()];
+      this.perMinutos = this.perLabels.map(k => perAgg2.get(k) || 0);
+      this.herrLabels = [...herrAgg2.keys()];
+      this.herrMinutos = this.herrLabels.map(k => herrAgg2.get(k) || 0);
     }
   }
 
-  // ====== CANVAS helpers ======
   /** Toma el canvas por id, lo ajusta al tamaño del wrapper .cg-box y devuelve el contexto 2D */
   private prepareCanvas(id: string): CanvasRenderingContext2D | null {
     const el = document.getElementById(id) as HTMLCanvasElement | null;
@@ -500,15 +579,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const h = Math.max(150, box?.clientHeight ?? 150);
     el.width = w;
     el.height = h;
-    // estilos redundantes (los CSS ya lo fuerzan, esto asegura el drawing buffer)
-    el.style.width = `${w}px`;
-    el.style.height = `${h}px`;
+    (el.style as any).width = `${w}px`;
+    (el.style as any).height = `${h}px`;
     return el.getContext('2d');
   }
 
-  // ====== RENDER ======
   private destroyCharts(): void {
-    Object.values(this.chartRefs).forEach(ch => { try { ch?.destroy(); } catch { } });
+    Object.values(this.chartRefs).forEach(ch => {
+      try { ch?.destroy(); } catch { }
+    });
     this.chartRefs = {};
   }
 
@@ -524,7 +603,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (ctxSem) {
       this.chartRefs['distSem'] = new C(ctxSem, {
         type: 'doughnut',
-        data: { labels: this.distSemLabels, datasets: [{ data: this.distSemValues, backgroundColor: this.colorList(this.distSemLabels.length), borderWidth: 0 }] },
+        data: {
+          labels: this.distSemLabels,
+          datasets: [{ data: this.distSemValues, backgroundColor: this.colorList(this.distSemLabels.length), borderWidth: 0 }]
+        },
         options: { responsive: false, maintainAspectRatio: false, animation: false, cutout: '58%', plugins: { legend: { position: 'bottom' } } }
       });
     }
@@ -534,7 +616,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (ctxMes) {
       this.chartRefs['distMes'] = new C(ctxMes, {
         type: 'doughnut',
-        data: { labels: this.distMesLabels, datasets: [{ data: this.distMesValues, backgroundColor: this.colorList(this.distMesLabels.length), borderWidth: 0 }] },
+        data: {
+          labels: this.distMesLabels,
+          datasets: [{ data: this.distMesValues, backgroundColor: this.colorList(this.distMesLabels.length), borderWidth: 0 }]
+        },
         options: { responsive: false, maintainAspectRatio: false, animation: false, cutout: '58%', plugins: { legend: { position: 'bottom' } } }
       });
     }
@@ -543,9 +628,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const ctxPareto = this.prepareCanvas('cgChartPareto');
     if (ctxPareto) {
       const labelsFull = this.paretoLabels;
-      const thresh = this.thresholdMinutos;
-      const maxMinutes = Math.max(thresh, ...(this.paretoMinutos.length ? this.paretoMinutos : [0]));
-
+      const maxMinutes = Math.max(this.thresholdMinutos, ...(this.paretoMinutos.length ? this.paretoMinutos : [0]));
       this.chartRefs['pareto'] = new C(ctxPareto, {
         type: 'bar',
         data: {
@@ -575,7 +658,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (ctxTipo) {
       this.chartRefs['tipo'] = new C(ctxTipo, {
         type: 'doughnut',
-        data: { labels: this.tipoLabels, datasets: [{ label: 'Min/sem', data: this.tipoMinutos, backgroundColor: this.colorList(this.tipoLabels.length), borderWidth: 0 }] },
+        data: {
+          labels: this.tipoLabels,
+          datasets: [{ label: 'Min/sem', data: this.tipoMinutos, backgroundColor: this.colorList(this.tipoLabels.length), borderWidth: 0 }]
+        },
         options: { responsive: false, maintainAspectRatio: false, animation: false, cutout: '65%', plugins: { legend: { position: 'bottom' } } }
       });
     }
@@ -585,7 +671,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (ctxPer) {
       this.chartRefs['per'] = new C(ctxPer, {
         type: 'bar',
-        data: { labels: this.perLabels, datasets: [{ label: 'Min/sem', data: this.perMinutos, backgroundColor: this.colorList(this.perLabels.length).map(c => c === this.PALETTE.amber ? '#FBBF24' : c), borderColor: this.PALETTE.tealDark, borderWidth: 1 }] },
+        data: {
+          labels: this.perLabels,
+          datasets: [{ label: 'Min/sem', data: this.perMinutos, backgroundColor: this.colorList(this.perLabels.length).map(c => c === this.PALETTE.amber ? '#FBBF24' : c), borderColor: this.PALETTE.tealDark, borderWidth: 1 }]
+        },
         options: { responsive: false, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
       });
     }
@@ -595,7 +684,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (ctxHerr) {
       this.chartRefs['herr'] = new C(ctxHerr, {
         type: 'bar',
-        data: { labels: this.herrLabels, datasets: [{ label: 'Min/sem', data: this.herrMinutos, backgroundColor: this.colorList(this.herrLabels.length), borderWidth: 0 }] },
+        data: {
+          labels: this.herrLabels,
+          datasets: [{ label: 'Min/sem', data: this.herrMinutos, backgroundColor: this.colorList(this.herrLabels.length), borderWidth: 0 }]
+        },
         options: { indexAxis: 'y', responsive: false, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
       });
     }

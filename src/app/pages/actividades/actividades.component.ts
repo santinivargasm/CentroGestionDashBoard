@@ -22,9 +22,7 @@ type Iniciativa = {
 };
 
 type Subordinado = { nombre: string; correo_electronico: string };
-
 type OpcionVer = { label: string; value: string };
-
 type OpcionCorreo = { correo: string; etiqueta: string; rol: string };
 
 type NuevaIniciativa = {
@@ -43,7 +41,6 @@ type ColaboradorInfo = {
   correo_jefe_inmediato_2?: string | null;
 };
 
-// ADD: tipo mínimo para leer estados de historias
 type HistoriaMin = { estado?: string | null };
 
 @Component({
@@ -60,16 +57,19 @@ export class ActividadesComponent implements OnInit, OnDestroy {
   private API = 'https://hubai.azurewebsites.net';
 
   // ✅ ADMIN (usa el mismo correo que en Flask: ADMIN_EMAIL)
-  private ADMIN_EMAIL = 'admin@hubai.com';
+  private ADMIN_EMAIL = 'santiago.vargas@credibanco.com';
   private isAdmin(): boolean {
     return (this.session.getEmail() || '').trim().toLowerCase() === this.ADMIN_EMAIL.toLowerCase();
   }
 
   // ======== Estado base ========
   emailActual: string = '';
+  userIdActual: string = '';
+  nombreActual: string = '';
   iniciativas: Iniciativa[] = [];
 
-  // Ver: (Yo / Subordinados)
+  // Ver: (Yo / Subordinados) — dejamos el mecanismo para no romper nada,
+  // pero ya no habrá selector visual; cargamos “Yo” por defecto.
   opcionesVer: OpcionVer[] = [];
   verComo: string = '';
 
@@ -86,24 +86,25 @@ export class ActividadesComponent implements OnInit, OnDestroy {
   creando = false;
   errorCrear = '';
 
-  // ======== Selector de correo ========
-  mostrarSelectorCorreo = false;
-  correoSeleccionado = '';
-  opcionesCorreo: OpcionCorreo[] = [];
+  // ======== Selector de correo (ELIMINADO DEL UI) ========
+  // ❌ Quitamos estas banderas/estado para no exponer selector al usuario.
+  // (Se dejan comentadas por si los quieres reactivar en el futuro)
+  // mostrarSelectorCorreo = false;
+  // correoSeleccionado = '';
+  // opcionesCorreo: OpcionCorreo[] = [];
 
   // ---- Control anti-race para el combo "Ver:"
   private verReqId = 0;
 
   // =========================================
-  // AÑADIDOS: catálogos para selects (Edit/Nueva)
+  // Catálogos para selects (Edit/Nueva)
   // =========================================
   tipoActividadOpts: string[] = [
     '', 'Power BI', 'IA', 'Machine Learning', 'Python', 'Query', 'Dash', 'DPA',
     'Procesamiento Data', 'Workflow', 'Reunión', 'PPT',
-    // Extras para detectar oportunidades de automatización
     'ETL/ELT', 'Data Cleaning', 'Scraping', 'Validación de Datos',
     'Carga de Reportes', 'Documentación', 'Soporte/Incidentes',
-    'Integración de Sistemas', 'Testing', 'Automatización RPA'
+    'Integración de Sistemas', 'Testing', 'Automatización RPA', 'GoAnywhere', 'Automate',
   ];
 
   periodicidadOpts: string[] = [
@@ -111,37 +112,76 @@ export class ActividadesComponent implements OnInit, OnDestroy {
   ];
 
   herramientasOpts: string[] = [
-    '', 'Power BI', 'Cloudera', 'Python', 'Excel', 'Postman', 'Outlook', 'Teams',
+    '', 'Power BI', 'Cloudera', 'Python', 'GoAnywhere', 'Excel', 'Postman', 'Outlook', 'Teams',
     'Copilot', 'Word', 'PowerPoint', 'SharePoint', 'Power Platform', 'Azure', 'SAP',
-    // Data/BI/Analytics
     'Tableau', 'Qlik', 'Looker', 'Databricks', 'Snowflake', 'BigQuery', 'Redshift',
     'MySQL', 'PostgreSQL', 'SQL Server', 'Oracle', 'Teradata',
-    // Ingeniería/Orquestación
     'Airflow', 'dbt', 'Fivetran', 'Kafka',
-    // Dev/DevOps
     'GitHub', 'GitLab', 'Bitbucket', 'Jenkins', 'Azure DevOps', 'Docker', 'Kubernetes', 'Terraform',
-    // RPA/Automation/Testing
-    'UiPath', 'Automation Anywhere', 'Power Automate', 'Selenium',
-    // Colaboración/Docs
+    'UiPath', 'Automation Anywhere', 'Power Automate', 'Selenium', 'Automate',
     'Confluence', 'Jira', 'ServiceNow', 'Notion', 'Slack', 'Zoom',
-    // M365
     'OneDrive', 'Power Apps'
   ];
 
+private hydrateFromWhoAmI(): Promise<{ email?: string | null, name?: string | null, role?: string | null }> {
+    return new Promise((resolve) => {
+        // Obtener el correo electrónico desde el servicio de sesión o desde el flujo actual
+        const email = (this.session.getEmail() || '').trim().toLowerCase();
+        
+        if (email) {
+            // Llamamos al endpoint para obtener el rol del usuario
+            this.http.get<{ ok: boolean; rol?: string | null }>(`${this.API}/api/rol/${encodeURIComponent(email)}`)
+
+                .subscribe({
+                    next: (rolResponse) => {
+                        const role = rolResponse?.rol || null; // Obtenemos el rol
+                        // Guardamos el rol en el servicio de sesión
+                        this.session.setRole(role);
+                        
+                        resolve({ email, role });
+                    },
+                    error: () => resolve({ email, role: null }) // Si falla, retornamos solo el correo
+                });
+        } else {
+            resolve({ email: null, role: null });
+        }
+    });
+}
+
+
+
   ngOnInit(): void {
+    // 1) Mantén la suscripción existente (no tocar)
     this.subs.push(
       this.session.emailChanges().subscribe(c => {
         this.emailActual = c || '';
-        this.prepararOpcionesVer();             // <-- una sola función se encarga y deduplica
+        this.prepararOpcionesVer();
         this.cargarIniciativas(this.verComo || this.emailActual);
       })
     );
 
-    // Primer render si ya hay sesión
-    this.emailActual = this.session.getEmail() || '';
-    this.prepararOpcionesVer();
-    if (this.verComo) this.cargarIniciativas(this.verComo);
+    // 2) Snapshot rápido (por si ya hubiera algo guardado)
+    const snap = this.session.getSnapshot();
+    this.userIdActual = snap.userId || '';
+    this.nombreActual = snap.nombre || '';
+
+    // 3) Hidrata SIEMPRE desde EasyAuth (source of truth) y luego continúa
+    this.hydrateFromWhoAmI().then(({ email, name, role }) => {
+      const effective = (email || this.userIdActual || snap.email || '').trim().toLowerCase();
+      if (effective) {
+        // fuerza el canal único de correo para toda la lógica existente
+        this.session.setEmail(effective);
+        this.emailActual = effective;
+        this.verComo = effective;
+        if (name && !this.nombreActual) this.nombreActual = name;
+        if (role) this.session.setRole(role);  // Asegúrate de que el rol también se esté guardando correctamente
+      }
+      // prepara y carga (si ya no se disparó por la suscripción)
+      this.prepararOpcionesVer();
+      if (this.verComo) this.cargarIniciativas(this.verComo);
+    });
   }
+
 
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
@@ -155,34 +195,29 @@ export class ActividadesComponent implements OnInit, OnDestroy {
     return a === 'aprobado' || a === 'aprobada';
   }
 
-  // ======== Select "Ver:" (con deduplicación y anti-race) ========
+  // ======== Select "Ver:" (anti-race) ========
   private prepararOpcionesVer(): void {
-    if (!this.emailActual) {
-      this.abrirSelectorCorreo();
-      return;
-    }
+    // ✅ Ya NO abrimos selector. Si no hay email, salimos silenciosamente.
+    if (!this.emailActual) return;
 
     const yo: OpcionVer = { label: `Yo • ${this.emailActual}`, value: this.emailActual };
 
-    // id de solicitud para ignorar respuestas viejas
     const myReq = ++this.verReqId;
-
-    this.opcionesVer = [yo]; // arranca con "Yo" únicamente
+    this.opcionesVer = [yo];
 
     this.http
       .get<Subordinado[]>(`${this.API}/api/subordinados_de/${encodeURIComponent(this.emailActual)}`)
       .subscribe({
         next: (rows) => {
-          // Si llegó una respuesta de una solicitud anterior, ignórala
           if (myReq !== this.verReqId) return;
 
           const seen = new Set<string>();
-          const list: OpcionVer[] = [yo]; // "Yo" siempre primero
+          const list: OpcionVer[] = [yo];
 
           (rows || []).forEach(s => {
             const correo = (s.correo_electronico || '').trim();
             const key = correo.toLowerCase();
-            if (!correo || seen.has(key)) return; // dedup por correo
+            if (!correo || seen.has(key)) return;
             seen.add(key);
             const label = `${s.nombre} • ${correo}`;
             list.push({ label, value: correo });
@@ -190,14 +225,12 @@ export class ActividadesComponent implements OnInit, OnDestroy {
 
           this.opcionesVer = list;
 
-          // normaliza verComo
           const hasCurrent = this.opcionesVer.some(o => o.value.toLowerCase() === (this.verComo || '').toLowerCase());
           if (!hasCurrent) this.verComo = this.emailActual;
 
           this.cargarIniciativas(this.verComo);
         },
         error: () => {
-          // En error, deja solo "Yo"
           this.opcionesVer = [yo];
           if (!this.verComo) this.verComo = this.emailActual;
           this.cargarIniciativas(this.verComo);
@@ -218,8 +251,6 @@ export class ActividadesComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (rows) => {
           this.iniciativas = rows || [];
-
-          // ADD: completa/ajusta el avance con base en las historias reales
           this.actualizarAvanceLocal();
         },
         error: (err) => {
@@ -229,7 +260,7 @@ export class ActividadesComponent implements OnInit, OnDestroy {
       });
   }
 
-  // ======== Fila (abre modal edición) ========
+  // ======== Fila (modal edición) ========
   onRowClick(it: Iniciativa): void {
     this.mostrarModalNueva = false;
     this.editModel = JSON.parse(JSON.stringify(it));
@@ -241,13 +272,13 @@ export class ActividadesComponent implements OnInit, OnDestroy {
     const owner = (it.correo_electronico || '').trim().toLowerCase();
     const me = (this.session.getEmail() || '').trim().toLowerCase();
 
-    // ✅ Admin: puede aprobar siempre (no bloqueamos el select ni borramos 'aprobacion')
-    if (this.isAdmin()) {
+    // Verificar si el usuario tiene el rol de "administrador"
+    if (this.isAdministrador()) {
       this.puedeAprobarActual = true;
-      return; // no necesitamos consultar jefes del owner
+      return;
     }
 
-    // Regla actual para jefe/dueño
+    // Si no es "administrador", verificamos si es un jefe inmediato
     this.http
       .get<ColaboradorInfo[]>(`${this.API}/api/colaborador/${encodeURIComponent(owner)}`)
       .subscribe({
@@ -256,11 +287,21 @@ export class ActividadesComponent implements OnInit, OnDestroy {
           const jefe1 = (c?.correo_jefe_inmediato || '').trim().toLowerCase();
           const jefe2 = (c?.correo_jefe_inmediato_2 || '').trim().toLowerCase();
           const hasJefe = !!jefe1 || !!jefe2;
+
+          // El usuario puede aprobar si es uno de los jefes o el responsable de la iniciativa si no tiene jefes asignados
           this.puedeAprobarActual = (me === jefe1 || me === jefe2) || (!hasJefe && me === owner);
         },
         error: () => { this.puedeAprobarActual = false; }
       });
   }
+
+  // Método para verificar si el usuario es un "administrador"
+  isAdministrador(): boolean {
+    const rol = this.session.getRole() || '';  // Suponiendo que tienes el rol guardado en la sesión
+    return rol.toLowerCase() === 'administrador';
+  }
+
+
 
   cerrarModalEdicion(): void {
     this.mostrarModalEdicion = false;
@@ -276,7 +317,7 @@ export class ActividadesComponent implements OnInit, OnDestroy {
     this.errorGuardar = '';
 
     const payload: any = { ...this.editModel, correo_solicitante: this.session.getEmail() || '' };
-    if (!this.puedeAprobarActual) delete payload.aprobacion; // admin o jefe no pasan por aquí
+    if (!this.puedeAprobarActual) delete payload.aprobacion;
 
     this.http
       .put(`${this.API}/api/iniciativas/${this.editModel.id_iniciativa}`, payload)
@@ -318,14 +359,13 @@ export class ActividadesComponent implements OnInit, OnDestroy {
       return;
     }
     this.router.navigate(
-      ['/history-user', it.id_iniciativa],     // ← ruta solicitada
-      { state: { iniciativa: it } }            // ← pasa toda la fila seleccionada
+      ['/history-user', it.id_iniciativa],
+      { state: { iniciativa: it } }
     );
   }
 
   // ======== NUEVA INICIATIVA ========
   abrirModalNuevaIniciativa(): void {
-    // cierra el de edición si estuviera abierto (no cambio nada más)
     this.mostrarModalEdicion = false;
 
     const owner = this.verComo || this.emailActual;
@@ -341,7 +381,6 @@ export class ActividadesComponent implements OnInit, OnDestroy {
     this.errorCrear = '';
     this.creando = false;
 
-    // 🔧 clave: abre en el próximo tick para evitar solape con el overlay anterior
     setTimeout(() => {
       this.mostrarModalNueva = true;
     }, 0);
@@ -385,33 +424,7 @@ export class ActividadesComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ======== Cambiar correo (sesión) ========
-  cambiarCorreo(): void {
-    this.abrirSelectorCorreo();
-  }
-  abrirSelectorCorreo(): void {
-    this.mostrarSelectorCorreo = true;
-    this.correoSeleccionado = this.session.getEmail() || '';
-    if (!this.opcionesCorreo.length) {
-      this.http.get<OpcionCorreo[]>(`${this.API}/api/correos_select`).subscribe({
-        next: rows => (this.opcionesCorreo = rows || []),
-        error: err => console.error('Error correos_select:', err)
-      });
-    }
-  }
-  cancelarSelectorCorreo(): void {
-    if (!this.session.getEmail()) return;
-    this.mostrarSelectorCorreo = false;
-  }
-  confirmarSelectorCorreo(): void {
-    const c = (this.correoSeleccionado || '').trim();
-    if (!c) return;
-    this.session.setEmail(c);
-    this.mostrarSelectorCorreo = false;
-  }
-
-  // ADD: recalcula el avance de cada iniciativa leyendo sus historias (cliente)
-  // Recalcula el avance por historias y ajusta el estado (Cerrada/Abierta)
+  // ======== AVANCE LOCAL (sin cambios de lógica) ========
   private actualizarAvanceLocal(): void {
     const cerrados = new Set(['cerrada', 'finalizada', 'completada', 'hecha']);
 
@@ -423,7 +436,6 @@ export class ActividadesComponent implements OnInit, OnDestroy {
         next: (hs) => {
           const total = hs?.length ?? 0;
 
-          // Sin historias: dejamos el estado como está y sólo normalizamos avance
           if (!total) { this.iniciativas[i].avance = 0; return; }
 
           const nCerradas = (hs || []).filter(h =>
@@ -433,18 +445,14 @@ export class ActividadesComponent implements OnInit, OnDestroy {
           const pct = Math.round((nCerradas * 100) / total);
           this.iniciativas[i].avance = pct;
 
-          // Nuevo estado según avance
           const newState = pct >= 100 ? 'Cerrada' : 'Abierta';
 
-          // Evita PUTs innecesarios si no hay cambios
           const changed =
             (this.iniciativas[i].estado_iniciativa || '').toLowerCase() !== newState.toLowerCase() ||
             (this.iniciativas[i].avance ?? 0) !== pct;
 
-          // Refleja en UI de inmediato
           this.iniciativas[i].estado_iniciativa = newState;
 
-          // Sincroniza con backend de forma silenciosa
           if (changed) {
             this.http.put(`${this.API}/api/iniciativas/${id}`, {
               estado_iniciativa: newState,
@@ -459,3 +467,5 @@ export class ActividadesComponent implements OnInit, OnDestroy {
     });
   }
 }
+
+
