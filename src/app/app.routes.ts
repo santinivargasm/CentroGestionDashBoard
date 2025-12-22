@@ -9,7 +9,7 @@ export const routes: Routes = [
       import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent)
   },
   {
-    path: 'formularios',
+    path: 'formularios', 
     loadComponent: () =>
       import('./pages/formularios/formularios.component').then(m => m.FormulariosComponent)
   },
