@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpClientModule, HttpHeaders } from '@angular/common/http';
 
@@ -11,11 +11,16 @@ type ColaboradorPayload = {
   correo_electronico: string;
   vicepresidencia?: string | null;
   gerencia?: string | null;
-  direccion_area?: string | null; // default 'Activo' en DB si viene null
+  direccion_area?: string | null;
   nombre_jefe_inmediato?: string | null;
   correo_jefe_inmediato?: string | null;
   nombre_jefe_inmediato_2?: string | null;
   correo_jefe_inmediato_2?: string | null;
+};
+
+type JefeDTO = {
+  nombre: string;
+  correo: string;
 };
 
 @Component({
@@ -25,240 +30,16 @@ type ColaboradorPayload = {
   templateUrl: './formularios.html',
   styleUrls: ['./formularios.css'],
 })
-export class FormulariosComponent {
+export class FormulariosComponent implements OnInit {
   private http = inject(HttpClient);
 
-  // ---------- Listas (tal cual las enviaste) ----------
-  VICEPRESIDENCIAS: string[] = [
-    'Cumplimiento',
-    'Desarrollo de Soluciones',
-    'Finanzas y Servicios Corporativos',
-    'Negocio',
-    'Open Business',
-    'Presidencia',
-    'Secretaría General',
-    'Tecnología',
-    'Copiloto',
-    'Vicepresidencia de Operaciones',
-  ];
+  // ---------- Listas dinámicas ----------
+  VICEPRESIDENCIAS: string[] = [];
+  GERENCIAS: string[] = [];
+  DIRECCIONES: string[] = [];
+  JEFES: JefeDTO[] = [];
 
-  GERENCIAS: string[] = [
-    'Abastecimiento Estratégico',
-    'Administrativa',
-    'Arquitectura Empresarial',
-    'Auditoría Interna',
-    'Comercial',
-    'Corporativo- Transporte',
-    'Corporativo-Retail',
-    'Corporativo-Servicios',
-    'Copiloto',
-    'Cumplimiento',
-    'Data Science',
-    'Desarrollo de Soluciones',
-    'Desarrollo y Expansión de Nuevos Negocios',
-    'Empresarial',
-    'Entidades financieras',
-    'Gobierno en Tecnología',
-    'Ingeniería de Software',
-    'Mercadeo y Experiencia',
-    'Open Business',
-    'Open Finance y Data',
-    'Pagos Inmediatos',
-    'Planeación y Finanzas',
-    'PMO',
-    'Producto',
-    'Procesamiento',
-    'Producto Procesamiento Transaccional',
-    'Productos de Desarrollo de Acceso',
-    "Psp's Adquirentes",
-    'Riesgos y Continuidad del Negocio',
-    'Secretaría General',
-    'Seguridad de la información',
-    'Talento humano',
-    'Transformación Digital',
-    'Vicepresidencia de Operaciones',
-    'Operaciones',
-  ];
-
-  DIRECCIONES: string[] = [
-    'Abastecimiento Estratégico',
-    'Administrativa',
-    'Aplicaciones Web',
-    'Arquitectura Empresarial',
-    'Auditoría Interna',
-    'Bienestar y Salud Ocupacional',
-    'Corporativo- Transporte',
-    'Corporativo-Retail',
-    'Corporativo-Servicios',
-    'Copiloto',
-    'Data Science',
-    'Desarrollo de Mercados',
-    'Desarrollo Organizacional',
-    'Desarrollo y Expansión de Nuevos Negocios',
-    'Empresarial',
-    'Empresarial 2',
-    'Entidades financieras',
-    'Finanzas',
-    'Gobierno en Tecnología',
-    'Mercadeo y Experiencia',
-    'Open Business',
-    'Open Finance y Data',
-    'Pagos Inmediatos',
-    'PMO Agile',
-    'Procesos',
-    'Producto de Procesamiento',
-    "PSP's Adquirentes",
-    'Producto Procesamiento 4',
-    'Productos de Acceso Digital',
-    'Productos de Desarrollo de Acceso',
-    "Psp's Adquirentes",
-    'Regional Centro',
-    'Riesgos y Continuidad del Negocio',
-    'Sarlaft',
-    'Secretaría General 3',
-    'Seguridad de la información',
-    'Talento Humano',
-    'Tesorería',
-    'Transformación Digital',
-    'Valoración y Selección',
-    'Direccion de Robótica',
-  ];
-
-  NOMBRES_JEFES: string[] = [
-    'Alison Cortés Fonseca',
-    'Andrea Milena Ticora Alturo',
-    'Camilo Andrés Ocampo Restrepo',
-    'César Armando Tenjo Urquijo',
-    'Claudia Patricia Camacho Sánchez',
-    'Claudia Patricia Jaimes Capacho',
-    'Cristhian Yovany Almonacid Rojas',
-    'Daniel Andrés Pulido Mora',
-    'David Alejandro Triviño Rodríguez',
-    'Derly Ceferino Jiménez',
-    'Derly Yized Guayacundo Duarte',
-    'Diego Andrés Esteban García',
-    'Esteban Tequia Díaz',
-    'Estefany Flórez Carreño',
-    'Genny Carolina Monroy Peña',
-    'Helmuth Silva Quintero',
-    'Iván Danilo León Aldana',
-    'Jeferson Smith Villalba Sierra',
-    'Jeimy Viviana Preciado Orjuela',
-    'Jennifer Tatiana León Peña',
-    'Jenny Carolina Pabón Márquez',
-    'Johana Leal Ussa',
-    'Johanna Del Pilar Vallejo Junca',
-    'Jorge Andrés Gómez Munar',
-    'Juan Carlos Sandoval Garzón',
-    'Juana Mariño Villegas',
-    'Julie Andrea Martínez Blanco',
-    'Leidy Carolina Fagua Galvis',
-    'Leidy Jhoana Fernández Carranza',
-    'Luz Stella Castillo Chaparro',
-    'Margarita María Córdoba Jaimes',
-    'Martha Liliana Rueda Beltrán',
-    'Nadia Stefanny Vega Guerrero',
-    'Nicolás Casallas López',
-    'Rubén Darío Atara Piraquive',
-    'Sandy Lorena Puentes Ruiz',
-    'Verónica Nathalia González Velasco',
-    'Walter Smith Casallas Osorio',
-    'Yaqueline Astrid Díaz Rúa',
-    'Yenny Raquel Sotelo Cortés',
-    'Yeny Paola Giraldo Puentes',
-    'Mario Andres Izquierdo Recaman',
-  ];
-
-  CORREOS_JEFES: string[] = [
-    'alison.cortesf@credibanco.com',
-    'andrea.ticora@credibanco.com',
-    'camilo.ocampo@credibanco.com',
-    'carolina.pabon@credibanco.com',
-    'cesar.tenjo@credibanco.com',
-    'claudia.camacho@credibanco.com',
-    'claudia.jaimes@credibanco.com',
-    'cristian.almonacid@credibanco.com',
-    'daniel.pulido@credibanco.com',
-    'david.trivino@credibanco.com',
-    'derly.ceferino@credibanco.com',
-    'derly.guayacundo@credibanco.com',
-    'diego.esteban@credibanco.com',
-    'esteban.tequia@credibanco.com',
-    'estefany.florez@credibanco.com',
-    'genny.monroy@credibanco.com',
-    'helmuth.silva@credibanco.com',
-    'ivan.leon@credibanco.com',
-    'jeferson.villalba@credibanco.com',
-    'jeimy.preciado@credibanco.com',
-    'jenny.giraldo@credibanco.com',
-    'johana.leal@credibanco.com',
-    'johanna.vallejo@credibanco.com',
-    'jorge.gomez@credibanco.com',
-    'juan.sandoval@credibanco.com',
-    'juana.marino@credibanco.com',
-    'julie.martinez@credibanco.com',
-    'leidy.fagua@credibanco.com',
-    'leidy.fernandez@credibanco.com',
-    'Luz.castillo@credibanco.com',
-    'martha.rueda@credibanco.com',
-    'nadia.vega@credibanco.com',
-    'nicolas.casallas@credibanco.com',
-    'ruben.atara@credibanco.com',
-    'sandy.puentes@credibanco.com',
-    'tatiana.leon@credibanco.com',
-    'veronica.gonzalez@credibanco.com',
-    'walter.casallas@credibanco.com',
-    'yaqueline.diaz@credibanco.com',
-    'yenny.sotelo@credibanco.com',
-    'mario.izquierdo@credibanco.com',
-  ];
-
-  // La lista 2 trae un pequeño cambio en cesar.tenjo (igual a la tuya)
-  CORREOS_JEFES_2: string[] = [
-    'alison.cortesf@credibanco.com',
-    'andrea.ticora@credibanco.com',
-    'camilo.ocampo@credibanco.com',
-    'carolina.pabon@credibanco.com',
-    'cesar.tenjo@credibanco.com',
-    'claudia.camacho@credibanco.com',
-    'claudia.jaimes@credibanco.com',
-    'cristian.almonacid@credibanco.com',
-    'daniel.pulido@credibanco.com',
-    'david.trivino@credibanco.com',
-    'derly.ceferino@credibanco.com',
-    'derly.guayacundo@credibanco.com',
-    'diego.esteban@credibanco.com',
-    'esteban.tequia@credibanco.com',
-    'estefany.florez@credibanco.com',
-    'genny.monroy@credibanco.com',
-    'helmuth.silva@credibanco.com',
-    'ivan.leon@credibanco.com',
-    'jeferson.villalba@credibanco.com',
-    'jeimy.preciado@credibanco.com',
-    'jenny.giraldo@credibanco.com',
-    'johana.leal@credibanco.com',
-    'johanna.vallejo@credibanco.com',
-    'jorge.gomez@credibanco.com',
-    'juan.sandoval@credibanco.com',
-    'juana.marino@credibanco.com',
-    'julie.martinez@credibanco.com',
-    'leidy.fagua@credibanco.com',
-    'leidy.fernandez@credibanco.com',
-    'Luz.castillo@credibanco.com',
-    'martha.rueda@credibanco.com',
-    'nadia.vega@credibanco.com',
-    'nicolas.casallas@credibanco.com',
-    'ruben.atara@credibanco.com',
-    'sandy.puentes@credibanco.com',
-    'tatiana.leon@credibanco.com',
-    'veronica.gonzalez@credibanco.com',
-    'walter.casallas@credibanco.com',
-    'yaqueline.diaz@credibanco.com',
-    'yenny.sotelo@credibanco.com',
-    'mario.izquierdo@credibanco.com',
-  ];
-
-  // ---------- Modelo (solo columnas de la tabla colaborador) ----------
+  // ---------- Modelo ----------
   model: ColaboradorPayload = {
     nombre: '',
     celular: '',
@@ -275,25 +56,113 @@ export class FormulariosComponent {
   isSaving = false;
   message: { type: 'ok' | 'error'; text: string } | null = null;
 
+  // =========================
+  // Ciclo de vida
+  // =========================
+  ngOnInit(): void {
+    this.cargarCatalogos();
+  }
+
+  private cargarCatalogos(): void {
+    // Vicepresidencias
+    this.http
+      .get<string[]>(`${BASE_URL}/api/catalogos_colaborador/vicepresidencia`)
+      .subscribe({
+        next: (data) => (this.VICEPRESIDENCIAS = data || []),
+        error: () => (this.VICEPRESIDENCIAS = []),
+      });
+
+    // Gerencias
+    this.http
+      .get<string[]>(`${BASE_URL}/api/catalogos_colaborador/gerencia`)
+      .subscribe({
+        next: (data) => (this.GERENCIAS = data || []),
+        error: () => (this.GERENCIAS = []),
+      });
+
+    // Direcciones / Áreas
+    this.http
+      .get<string[]>(`${BASE_URL}/api/catalogos_colaborador/direccion_area`)
+      .subscribe({
+        next: (data) => (this.DIRECCIONES = data || []),
+        error: () => (this.DIRECCIONES = []),
+      });
+
+    // Jefes (nombre + correo)
+    this.http.get<JefeDTO[]>(`${BASE_URL}/api/jefes`).subscribe({
+      next: (data) => (this.JEFES = data || []),
+      error: () => (this.JEFES = []),
+    });
+  }
+
+  // =========================
+  // Utils
+  // =========================
   private trimOrNull(v: string | null | undefined): string | null {
     if (v == null) return null;
     const s = String(v).trim();
     return s === '' ? null : s;
   }
 
+  // Cuando el usuario selecciona / escribe un nombre de jefe,
+  // intentamos completar el correo automáticamente.
+  onChangeNombreJefe1(): void {
+    const nombre = (this.model.nombre_jefe_inmediato || '').trim();
+    const jefe = this.JEFES.find((j) => j.nombre === nombre);
+    if (jefe) {
+      this.model.correo_jefe_inmediato = jefe.correo;
+    }
+  }
+
+  onChangeCorreoJefe1(): void {
+    const correo = (this.model.correo_jefe_inmediato || '').trim().toLowerCase();
+    const jefe = this.JEFES.find((j) => j.correo.toLowerCase() === correo);
+    if (jefe) {
+      this.model.nombre_jefe_inmediato = jefe.nombre;
+    }
+  }
+
+  onChangeNombreJefe2(): void {
+    const nombre = (this.model.nombre_jefe_inmediato_2 || '').trim();
+    const jefe = this.JEFES.find((j) => j.nombre === nombre);
+    if (jefe) {
+      this.model.correo_jefe_inmediato_2 = jefe.correo;
+    }
+  }
+
+  onChangeCorreoJefe2(): void {
+    const correo = (this.model.correo_jefe_inmediato_2 || '').trim().toLowerCase();
+    const jefe = this.JEFES.find((j) => j.correo.toLowerCase() === correo);
+    if (jefe) {
+      this.model.nombre_jefe_inmediato_2 = jefe.nombre;
+    }
+  }
+
+  // =========================
+  // Submit
+  // =========================
   submit() {
     this.message = null;
 
+    // Validación de campos obligatorios
     if (!this.model.nombre.trim() || !this.model.correo_electronico.trim()) {
       this.message = { type: 'error', text: 'Nombre y Correo electrónico son obligatorios.' };
       return;
     }
 
-    // Armamos payload limpio
+    // Validación de correo electrónico (dominio @credibanco.com)
+    const correoValido = this.model.correo_electronico.trim().toLowerCase();
+    const dominioPermitido = '@credibanco.com';
+
+    if (!correoValido.endsWith(dominioPermitido)) {
+      this.message = { type: 'error', text: 'El correo electrónico debe ser del dominio @credibanco.com.' };
+      return;
+    }
+
     const payload: ColaboradorPayload = {
       nombre: this.model.nombre.trim(),
       celular: this.trimOrNull(this.model.celular || null),
-      correo_electronico: this.model.correo_electronico.trim(),
+      correo_electronico: correoValido,
       vicepresidencia: this.trimOrNull(this.model.vicepresidencia || null),
       gerencia: this.trimOrNull(this.model.gerencia || null),
       direccion_area: this.trimOrNull(this.model.direccion_area || 'Activo') || 'Activo',
@@ -314,6 +183,8 @@ export class FormulariosComponent {
           if (res?.ok) {
             this.message = { type: 'ok', text: 'Colaborador creado correctamente.' };
             this.resetForm();
+            // Recarga catálogos por si se añadió algo nuevo
+            this.cargarCatalogos();
           } else {
             this.message = { type: 'error', text: res?.error || 'No se pudo crear el colaborador.' };
           }

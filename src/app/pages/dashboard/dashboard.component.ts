@@ -99,6 +99,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public rolUsuario: string = '';
 
   // Negocio
+  
   private WORKDAYS_PER_WEEK = 5;
   private WEEKS_PER_MONTH = 4.33;
   thresholdHoras = 44;
@@ -139,58 +140,46 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return out;
   }
 
-  async ngOnInit(): Promise<void> {
-    try {
-      // Hidratar los datos del usuario desde el backend (get email, name, role)
-      await this.session.hydrateFromWhoAmI();
+async ngOnInit(): Promise<void> {
+  try {
+    // 1) Primero: EasyAuth rellena email, nombre y userId
+    await this.cargarEasyAuthFront();
 
-      // Obtener el email y rol del usuario desde la sesión
-      const email = this.session.getEmail() || '';  // Obtén el correo electrónico desde la sesión
-      const role = this.session.getRole(); // Obtén el rol desde la sesión
+    // 2) Suscribirnos al email de sesión
+    this.subs.push(
+      this.session.emailChanges().subscribe((correo: string | null) => {
+        if (correo) {
+          this.mostrarSelectorCorreo = false;
+          this.viewerCorreo = correo.trim().toLowerCase();
+          this.cargarSubordinadosDelActor();
+          this.cargarColaborador(this.viewerCorreo);
+          this.cargarIniciativas(this.viewerCorreo);
+        } else {
+          this.mostrarSelectorCorreo = true;
+          this.cargarOpcionesColaborador();
+        }
+      })
+    );
 
-      console.log('Email:', email);  // Muestra el correo del usuario
-      console.log('Role:', role);    // Muestra el rol del usuario
+    // 3) Suscribirnos al rol desde el servicio
+    this.subs.push(
+      this.session.roleChanges().subscribe(rol => {
+        this.rolUsuario = rol || '';
+      })
+    );
 
-      // Llamar al backend para obtener el rol usando el correo electrónico
-      this.obtenerRolDelBackend(email);
+    // 4) Una vez EasyAuth ya puso el correo, pedimos el rol al backend
+    const email = this.session.getEmail();
+    if (email) this.obtenerRolDelBackend(email);
 
-      // Continuar con la lógica existente
-      this.subs.push(
-        this.session.emailChanges().subscribe((correo: string | null) => {
-          if (correo) {
-            this.mostrarSelectorCorreo = false;
-            this.viewerCorreo = (correo || '').trim().toLowerCase();
-            this.cargarSubordinadosDelActor();
-            this.cargarColaborador(this.viewerCorreo);
-            this.cargarIniciativas(this.viewerCorreo);
-          } else {
-            this.mostrarSelectorCorreo = true;
-            this.cargarOpcionesColaborador();
-          }
-        })
-      );
-
-      await this.cargarEasyAuthFront();
-
-      const actual = this.session.getEmail();
-      if (actual) {
-        this.viewerCorreo = (actual || '').trim().toLowerCase();
-        this.cargarSubordinadosDelActor();
-        this.cargarColaborador(this.viewerCorreo);
-        this.cargarIniciativas(this.viewerCorreo);
-      } else {
-        this.mostrarSelectorCorreo = true;
-        this.cargarOpcionesColaborador();
-      }
-
-      // Cargar el gráfico y otras funcionalidades
-      const mod = await import('chart.js/auto');
-      this.ChartLib = (mod as any).default || (mod as any);
-      this.recomputeAndRender();
-    } catch (error) {
-      console.error('Error al hidratar los datos del usuario', error);
-    }
+    // 5) Render charts
+    const mod = await import('chart.js/auto');
+    this.ChartLib = (mod as any).default || (mod as any);
+    this.recomputeAndRender();
+  } catch (err) {
+    console.error('Error inicializando dashboard', err);
   }
+}
 
 
   ngOnDestroy(): void {
@@ -240,31 +229,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  private obtenerRolDelBackend(correo: string): void {
-    if (!correo) return;
+private obtenerRolDelBackend(correo: string): void {
+  if (!correo) return;
 
-    this.http.get<{ ok: boolean; correo?: string; rol?: string | null }>(`${this.API}/api/rol/${encodeURIComponent(correo)}`).subscribe({
+  this.http
+    .get<{ ok: boolean; correo?: string; rol?: string | null }>(
+      `${this.API}/api/rol/${encodeURIComponent(correo)}`
+    )
+    .subscribe({
       next: (response) => {
-        console.log('Respuesta del backend:', response);  // Verifica la respuesta del backend
         if (response.ok) {
-          const rol: string | null = response.rol ?? null;  // Si rol es undefined, asigna null
-          console.log('Rol obtenido:', rol);  // Verifica el rol obtenido
-          this.session.setRole(rol);  // Guarda el rol en la sesión
-          if (rol === 'administrador') {
-            console.log('Usuario es administrador');
-          }
+          const rol = response.rol ?? null;
+          this.session.setRole(rol);
+          this.rolUsuario = rol || ''; // <-- ahora actualiza el HTML
         } else {
-          console.error('Error al obtener el rol');
+          console.error('Error obteniendo rol');
         }
       },
-      error: (err) => {
-        console.error('Error al hacer la solicitud del rol', err);
-      }
+      error: (err) => console.error('Error consultando rol', err)
     });
-
-  }
-
-
+}
 
 
   // ============ RESIZE (repinta con debounce) ============
@@ -481,7 +465,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         return { nombre: p.nombre, minutos: p.minutos, score: sc, impacto: p.minutos * (sc / 100) };
       }).sort((a, b) => b.impacto - a.impacto);
 
-      this.topCandidatos = candidates.slice(0, 5);
+      this.topCandidatos = candidates;
       this.paretoLabels = paretoPairs.map(x => x.nombre);
       this.paretoMinutos = paretoPairs.map(x => x.minutos);
       this.tipoLabels = [...tipoAgg.keys()];
@@ -558,7 +542,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         return { nombre: it.nombre_iniciativa || `ID ${it.id_iniciativa}`, minutos, score: sc, impacto: minutos * (sc / 100) };
       }).sort((a, b) => b.impacto - a.impacto);
 
-      this.topCandidatos = candidates.slice(0, 5);
+      this.topCandidatos = candidates;
       this.paretoLabels = candidates.map(x => x.nombre);
       this.paretoMinutos = candidates.map(x => x.minutos);
       this.tipoLabels = [...tipoAgg2.keys()];

@@ -1,5 +1,5 @@
 <div class="rounded-md shadow-md p-10 mb-4 bg-gradient-to-br from-[#ffffff] to-[#008f8f]">
-  
+
   <div class="rounded-xl border border-gray-200 bg-white shadow-md">
     <!-- Header igual al dashboard -->
     <div class="rounded-t-xl bg-gradient-to-br bg-[#00a1a1] px-5 py-3">
@@ -14,7 +14,8 @@
         <!-- Nombre (requerido) -->
         <div>
           <label class="lbl">Nombre <span class="req">*</span></label>
-          <input type="text" [(ngModel)]="model.nombre" name="nombre" required placeholder="Ingresa nombre" class="inp" />
+          <input type="text" [(ngModel)]="model.nombre" name="nombre" required placeholder="Ingresa nombre"
+            class="inp" />
         </div>
 
         <!-- Celular -->
@@ -26,82 +27,100 @@
         <!-- Correo electrónico (requerido) -->
         <div>
           <label class="lbl">Correo electrónico <span class="req">*</span></label>
-          <input type="email" [(ngModel)]="model.correo_electronico" name="correo_electronico" required placeholder="nombre.apellido@empresa.com" class="inp" />
+          <input type="email" [(ngModel)]="model.correo_electronico" name="correo_electronico" required
+            placeholder="nombre.apellido@empresa.com" class="inp" />
         </div>
 
         <!-- Vicepresidencia (select) -->
         <div>
           <label class="lbl">Vicepresidencia</label>
-          <select [(ngModel)]="model.vicepresidencia" name="vicepresidencia" class="inp">
-            <option [ngValue]="null">Seleccione...</option>
-            <option *ngFor="let v of VICEPRESIDENCIAS" [value]="v">{{ v }}</option>
-          </select>
+          <input type="text" [(ngModel)]="model.vicepresidencia" name="vicepresidencia" list="listaVicepresidencias"
+            placeholder="Escribe o selecciona" class="inp" />
+          <datalist id="listaVicepresidencias">
+            <option *ngFor="let v of VICEPRESIDENCIAS" [value]="v"></option>
+          </datalist>
         </div>
+
 
         <!-- Gerencia (select) -->
         <div>
           <label class="lbl">Gerencia</label>
-          <select [(ngModel)]="model.gerencia" name="gerencia" class="inp">
-            <option [ngValue]="null">Seleccione...</option>
-            <option *ngFor="let g of GERENCIAS" [value]="g">{{ g }}</option>
-          </select>
+          <input type="text" [(ngModel)]="model.gerencia" name="gerencia" list="listaGerencias"
+            placeholder="Escribe o selecciona" class="inp" />
+          <datalist id="listaGerencias">
+            <option *ngFor="let g of GERENCIAS" [value]="g"></option>
+          </datalist>
         </div>
+
 
         <!-- Dirección / Área (select) -->
         <div>
           <label class="lbl">Dirección / Área</label>
-          <select [(ngModel)]="model.direccion_area" name="direccion_area" class="inp">
-            <!-- Por defecto “Activo” si no eligen nada -->
-            <option [value]="'Activo'">Activo</option>
-            <option *ngFor="let d of DIRECCIONES" [value]="d">{{ d }}</option>
-          </select>
+          <input type="text" [(ngModel)]="model.direccion_area" name="direccion_area" list="listaDirecciones"
+            placeholder="Activo, Aplicaciones Web, etc." class="inp" />
+          <datalist id="listaDirecciones">
+            <!-- OJO: si quieres que "Activo" siempre aparezca -->
+            <option value="Activo"></option>
+            <option *ngFor="let d of DIRECCIONES" [value]="d"></option>
+          </datalist>
         </div>
+
 
         <!-- Nombre Jefe inmediato (select) -->
         <div>
           <label class="lbl">Nombre Jefe inmediato</label>
-          <select [(ngModel)]="model.nombre_jefe_inmediato" name="nombre_jefe_inmediato" class="inp">
-            <option [ngValue]="null">Seleccione...</option>
-            <option *ngFor="let n of NOMBRES_JEFES" [value]="n">{{ n }}</option>
-          </select>
+          <input type="text" [(ngModel)]="model.nombre_jefe_inmediato" name="nombre_jefe_inmediato"
+            list="listaNombresJefes" (change)="onChangeNombreJefe1()" placeholder="Escribe o selecciona" class="inp" />
+          <datalist id="listaNombresJefes">
+            <option *ngFor="let j of JEFES" [value]="j.nombre"></option>
+          </datalist>
         </div>
+
 
         <!-- Correo Jefe inmediato (select) -->
         <div>
           <label class="lbl">Correo Jefe inmediato</label>
-          <select [(ngModel)]="model.correo_jefe_inmediato" name="correo_jefe_inmediato" class="inp">
-            <option [ngValue]="null">Seleccione...</option>
-            <option *ngFor="let c of CORREOS_JEFES" [value]="c">{{ c }}</option>
-          </select>
+          <input type="email" [(ngModel)]="model.correo_jefe_inmediato" name="correo_jefe_inmediato"
+            list="listaCorreosJefes" (change)="onChangeCorreoJefe1()" placeholder="correo@credibanco.com" class="inp" />
+          <datalist id="listaCorreosJefes">
+            <option *ngFor="let j of JEFES" [value]="j.correo"></option>
+          </datalist>
         </div>
+
 
         <!-- Nombre Jefe inmediato 2 (select) -->
         <div>
-          <label class="lbl">Nombre Jefe inmediato 2</label>
-          <select [(ngModel)]="model.nombre_jefe_inmediato_2" name="nombre_jefe_inmediato_2" class="inp">
-            <option [ngValue]="null">Seleccione...</option>
-            <option *ngFor="let n of NOMBRES_JEFES" [value]="n">{{ n }}</option>
-          </select>
+          <label class="lbl">Nombre Jefe inmediato</label>
+          <input type="text" [(ngModel)]="model.nombre_jefe_inmediato" name="nombre_jefe_inmediato"
+            list="listaNombresJefes" (change)="onChangeNombreJefe2()" placeholder="Escribe o selecciona" class="inp" />
+          <datalist id="listaNombresJefes">
+            <option *ngFor="let j of JEFES" [value]="j.nombre"></option>
+          </datalist>
         </div>
+
 
         <!-- Correo Jefe inmediato 2 (select) -->
         <div>
-          <label class="lbl">Correo Jefe inmediato 2</label>
-          <select [(ngModel)]="model.correo_jefe_inmediato_2" name="correo_jefe_inmediato_2" class="inp">
-            <option [ngValue]="null">Seleccione...</option>
-            <option *ngFor="let c of CORREOS_JEFES_2" [value]="c">{{ c }}</option>
-          </select>
+          <label class="lbl">Correo Jefe inmediato</label>
+          <input type="email" [(ngModel)]="model.correo_jefe_inmediato" name="correo_jefe_inmediato"
+            list="listaCorreosJefes" (change)="onChangeCorreoJefe2()" placeholder="correo@credibanco.com" class="inp" />
+          <datalist id="listaCorreosJefes">
+            <option *ngFor="let j of JEFES" [value]="j.correo"></option>
+          </datalist>
         </div>
+
       </div>
 
       <!-- Mensaje -->
-      <div *ngIf="message" class="text-sm" [class.text-green-600]="message.type==='ok'" [class.text-red-600]="message.type==='error'">
+      <div *ngIf="message" class="text-sm" [class.text-green-600]="message.type==='ok'"
+        [class.text-red-600]="message.type==='error'">
         {{ message.text }}
       </div>
 
       <!-- Acciones -->
       <div class="flex items-center gap-2">
-        <button type="submit" [disabled]="isSaving || !model.nombre || !model.correo_electronico" class="btn-primary disabled:opacity-50">
+        <button type="submit" [disabled]="isSaving || !model.nombre || !model.correo_electronico"
+          class="btn-primary disabled:opacity-50">
           {{ isSaving ? 'Guardando...' : 'Guardar' }}
         </button>
         <button type="button" (click)="resetForm()" [disabled]="isSaving" class="btn-outline">

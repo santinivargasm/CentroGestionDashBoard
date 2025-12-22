@@ -18,6 +18,7 @@ type Iniciativa = {
   tipo_actividad: string;
   periodicidad: string;
   carga_minutos: number;
+  minutos_liberados: number;
   herramientas?: string | null;
 };
 
@@ -250,6 +251,7 @@ private hydrateFromWhoAmI(): Promise<{ email?: string | null, name?: string | nu
       .get<Iniciativa[]>(`${this.API}/api/iniciativas_por_correo/${encodeURIComponent(correo)}`)
       .subscribe({
         next: (rows) => {
+          console.log('Respuesta de la API:', rows);
           this.iniciativas = rows || [];
           this.actualizarAvanceLocal();
         },
@@ -264,9 +266,9 @@ private hydrateFromWhoAmI(): Promise<{ email?: string | null, name?: string | nu
   onRowClick(it: Iniciativa): void {
     this.mostrarModalNueva = false;
     this.editModel = JSON.parse(JSON.stringify(it));
+    console.log(this.editModel);
     this.errorGuardar = '';
     this.puedeAprobarActual = false;
-
     this.mostrarModalEdicion = true;
 
     const owner = (it.correo_electronico || '').trim().toLowerCase();

@@ -103,47 +103,4 @@ export class EmailSessionService {
     } catch { /* ignore */ }
   }
 
-  // ========== Hidratar desde EasyAuth (correo) + rol desde BD ==========
-  /**
-   * 1) Llama a `${API}/api/whoami` (tu backend) para leer email/name
-   * 2) Con ese email, llama a `${API}/api/rol/{email}` para traer el rol desde SQL
-   * 3) Persiste todo en la sesión (BehaviorSubjects + localStorage)
-   */
-async hydrateFromWhoAmI(): Promise<{ email: string | null, name: string | null, role: string | null }> {
-    let email: string | null = null;
-    let name: string | null = null;
-    let role: string | null = null;
-
-    // Eliminar la llamada a '/api/whoami' si ya no se usa.
-    // En lugar de eso, podrías recuperar los datos del correo directamente desde otro lugar (por ejemplo, una variable de sesión o el almacenamiento local).
-
-    try {
-        // Eliminamos la llamada a '/api/whoami' y directamente usamos el correo almacenado o cualquier otro mecanismo para obtener el email
-        email = this.getEmail(); // Si ya tienes el correo en el localStorage o en la sesión, lo puedes obtener aquí.
-        name = this.getNombre();  // Y lo mismo con el nombre.
-
-        if (email) {
-            this.setEmail(email);
-            this.setUserId(email);  // Usamos el email como userId si no hay otro
-            this.setNombre(name || email);
-
-            // Ahora, obtenemos el rol del backend usando el correo, que sigue siendo necesario.
-            try {
-                const r = await this.http
-                    .get<{ ok: boolean; correo?: string; rol?: string | null }>(`${API}/api/rol/${encodeURIComponent(email)}`)
-                    .toPromise();
-
-                role = r?.rol || null;
-                this.setRole(role); // Actualiza el rol en el servicio.
-            } catch (e) {
-                this.setRole(null); // Si no se puede obtener el rol, asignamos null.
-            }
-        }
-    } catch (e) {
-        // Si algo falla, no reventamos.
-    }
-
-    return { email, name, role };
-}
-
 }
